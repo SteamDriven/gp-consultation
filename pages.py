@@ -33,6 +33,47 @@ class ENTRY(ctk.CTkFrame):
         self.entry.delete(0, END)
 
 
+class IMAGE_BUTTON(ctk.CTkFrame):
+    def __init__(self, master=None, description="", path=None, size=None, fg=None, font=None, command=None, **kwargs):
+        super().__init__(master, **kwargs)
+
+        # CONFIGURATIONS
+        if size is None:
+            size = (1, 1)
+
+        if fg is None:
+            fg = "#3c5691"
+
+        if font is None:
+            font = ('Arial Bold', 30)
+
+        self.text = description
+        self.img_path = path
+        self.size = size
+        self.background_color = fg
+        self.font = font
+        self.name = self.text
+        self.command=command
+
+        self.configure(fg_color=self.background_color, corner_radius=0)
+
+        self.setup_widgets()
+        self.place_widgets()
+
+    def setup_widgets(self):
+        image = Image.open(self.img_path)
+        image_ck = ctk.CTkImage(image, size=self.size)
+
+        self.logo = ctk.CTkLabel(self, image=image_ck, text='')
+        self.btn = ctk.CTkButton(self, text=self.text, text_color='white', font=self.font,
+                                 fg_color=self.background_color, hover_color='#202f50', corner_radius=0,
+                                 anchor='w', command=self.command)
+
+    def place_widgets(self):
+        self.logo.grid(row=0, column=0, sticky='ew')
+        self.btn.grid(row=0, column=1, columnspan=2, sticky='ew')
+
+
 class LOGIN(ctk.CTkFrame):
 
     def __init__(self, parent, controller):
@@ -136,10 +177,10 @@ class DASHBOARD(ctk.CTkFrame):
         ctk.CTkFrame.__init__(self, parent)
 
         # CONFIGURATIONS
-        self.user_type = None
+        self.user_type = "Loading"
         self.controller = controller
         self.frames = {}
-        self.pages_list = []
+        self.pages_list = [APPOINTMENTS]
 
         self.logo_image_path = "Images/Logo_Bluebg.png"
 
@@ -155,27 +196,100 @@ class DASHBOARD(ctk.CTkFrame):
         self.calibri_3 = ctk.CTkFont(family="Calibri Light", size=20, underline=True)
         self.calibri_light = ctk.CTkFont(family="Calibri Light", size=25)
 
-        self.create_widgets()
-        self.place_widgets()
-
     def create_widgets(self):
         original_logo_image = Image.open(self.logo_image_path)
         logo_image_ck = ctk.CTkImage(original_logo_image, size=(96, 90))
 
         self.title_bar = ctk.CTkFrame(self, fg_color='#4c6fbf', corner_radius=0, height=90)
         self.logo_image = ctk.CTkLabel(self.title_bar, image=logo_image_ck, text='')
+        self.user_lbl = ctk.CTkLabel(self.title_bar, text=self.user_type, text_color='white',
+                                     font=self.helvetica_bold)
         self.menu_bar = ctk.CTkFrame(self, fg_color='#3c5691', corner_radius=0, width=300)
+        self.dash_frame = ctk.CTkFrame(self.menu_bar, fg_color='#2a3e6a', corner_radius=0, height=75)
+        self.dash_btn = ctk.CTkButton(self.dash_frame, fg_color='#2a3e6a', corner_radius=0, text='My Dashboard',
+                                      font=('Arial Bold', 35), hover=False)
+        self.buttons_frame = ctk.CTkFrame(self.menu_bar, fg_color='#3c5691', corner_radius=0)
         self.main_frame = ctk.CTkFrame(self, fg_color='white', corner_radius=0)
 
     def place_widgets(self):
         self.title_bar.grid(row=0, column=0, columnspan=4, sticky='ew')
         self.logo_image.pack(side=LEFT, anchor=CENTER)
+        self.user_lbl.pack(side=RIGHT, anchor=CENTER, padx=30)
         self.menu_bar.grid(row=1, column=0, rowspan=4, sticky='ns')
+        self.dash_frame.pack(side=TOP, anchor=CENTER)
+        self.dash_btn.pack(padx=12, pady=12, anchor=CENTER, ipadx=20)
+        self.buttons_frame.pack(pady=80, anchor=CENTER)
         self.main_frame.grid(row=1, column=1, rowspan=2, sticky='nsew')
+
+        for F in self.pages_list:
+            frame = F(self.main_frame, self)
+
+            self.frames[F] = frame
+
+    def show_frame(self, cont):
+        frame = self.frames[cont]
+        frame.tkraise()
+        frame.pack(side="left", fill="both", expand=True)
 
 
 class PATIENT_DASHBOARD(DASHBOARD):
-    pass
+    def __init__(self, parent, controller):
+        super().__init__(parent, controller)
+
+        self.user_type = "Patient"
+        self.buttons = {
+            'Appointments': {
+                "path": 'Images/Appointments.PNG',
+                "size": (56, 60),
+                "command": lambda: self.show_frame(APPOINTMENTS)
+            },
+            'Profile': {
+                "path": 'Images/Profile.PNG',
+                "size": (55, 57),
+                "command": None
+            },
+            'Prescriptions': {
+                "path": 'Images/Prescriptions.PNG',
+                "size": (60, 58),
+                "command": None
+            },
+            'Notifications': {
+                "path": 'Images/Notifications.PNG',
+                "size": (58, 58),
+                "command": None
+            },
+            'Chat': {
+                "path": 'Images/Chat.PNG',
+                "size": (67, 52),
+                "command": None
+            },
+        }
+
+        self.create_widgets()
+        self.configure_menu()
+        self.place_widgets()
+
+    def configure_menu(self):
+        self.buttons_frame.grid_columnconfigure(0, weight=0)
+        self.buttons_frame.grid_rowconfigure((0, 1, 2, 3, 4), weight=0)
+
+        for label, info in self.buttons.items():
+            print("\nButton Type:", label)
+
+            button = IMAGE_BUTTON(self.buttons_frame,
+                                  label,
+                                  info['path'],
+                                  info['size'],
+                                  command=info['command'])
+
+            button.pack(pady=30, anchor=W)
+
+
+class APPOINTMENTS(ctk.CTkFrame):
+    def __init__(self, parent, controller):
+        ctk.CTkFrame.__init__(self, parent)
+
+        self.configure(fg_color='red', corner_radius=0)
 
 
 class DOCTOR_DASHBOARD(DASHBOARD):

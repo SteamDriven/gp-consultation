@@ -2,7 +2,7 @@ import tkinter
 import customtkinter
 import customtkinter as ctk
 import re
-from pages import LOGIN, DASHBOARD, PATIENT_DASHBOARD, DOCTOR_DASHBOARD
+from pages import LOGIN, PATIENT_DASHBOARD
 from tkinter import messagebox
 from libclient import Client
 import logging
@@ -117,14 +117,14 @@ class APP(ctk.CTk):
 
         # Functions
         self.frames = {}
-        pages = [LOGIN, DASHBOARD]
+        pages = [LOGIN, PATIENT_DASHBOARD]
         for F in pages:
             frame = F(container, self)
 
             self.frames[F] = frame
 
     # Using the method mentioned later in the class to display a specific frame upon opening
-        self.show_frame(DASHBOARD)
+        self.show_frame(PATIENT_DASHBOARD)
     #
     # Display current frame using page as a parameter
 
@@ -159,7 +159,7 @@ class APP(ctk.CTk):
         action = accepted[0]
 
         if action == 'CHANGE TO PATIENT DASH':
-            self.handle_successful_login(UserTypes.PATIENT, DASHBOARD)
+            self.handle_successful_login(UserTypes.PATIENT, PATIENT_DASHBOARD)
 
         elif action == 'CHANGE TO CLINICIAN DASH':
             self.handle_successful_login(UserTypes.CLINICIAN, None)
