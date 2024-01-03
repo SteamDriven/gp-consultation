@@ -1,8 +1,12 @@
+import logging
 import tkinter
 import tkinter as tk
 from tkinter import *
 import customtkinter as ctk
 from PIL import Image
+import calendar
+from datetime import datetime
+import random
 
 
 class ENTRY(ctk.CTkFrame):
@@ -33,6 +37,180 @@ class ENTRY(ctk.CTkFrame):
         self.entry.delete(0, END)
 
 
+class DATE_FRAME(ctk.CTkFrame):
+    DISABLED_TEXT = '#0f0e0c'
+    ENABLED_TEXT = '#ffffff'
+    ENABLED_BG = '#4c6fbf'
+
+    def __init__(self, master=None, day=None, date=None, colour='green', **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.day = day
+        self.date = date
+        self.colour = colour
+        self.state = 'DISABLED'
+
+        self.configure(fg_color=self.colour)
+
+    def __str__(self):
+        return f"BUTTON: {self.day.upper()}, {self.date}, {self.state}"
+
+    def create_labels(self):
+        self.day_label = ctk.CTkLabel(self, text_color=self.DISABLED_TEXT, text=self.day, fg_color=self.colour,
+                                      font=('Arial Bold', 35))
+        self.date_label = ctk.CTkLabel(self, text_color=self.DISABLED_TEXT, text=self.date, fg_color=self.colour,
+                                       font=('Arial light', 35))
+
+    def place_widgets(self):
+        self.day_label.grid(row=0, column=0, sticky='ns', padx=15, pady=5, ipadx=20, ipady=20)
+        self.date_label.grid(row=1, column=0, sticky='ns', pady=5)
+
+    def update_day(self, new_day):
+        self.day = new_day
+        self.day_label.configure(text=self.day)
+
+        return print(f"Day has now been set to {self.day}")
+
+    def update_date(self, new_date):
+        self.date = new_date
+        self.date_label.configure(text=self.date)
+
+        return print(f"Date has now been set to {self.date}")
+
+    def change_color(self, bg, color):
+        self.configure(fg_color=bg)
+        self.day_label.configure(text_color=color, fg_color=bg)
+        self.date_label.configure(text_color=color, fg_color=bg)
+
+    def change_state(self):
+        if self.state == 'DISABLED':
+            self.state = 'ENABLED'
+
+            self.change_color(self.ENABLED_BG, self.ENABLED_TEXT)
+        else:
+            self.state = "DISABLED"
+            self.change_color(self.colour, self.DISABLED_TEXT)
+
+        print(f"Button state has been changed to {self.state}")
+
+
+class CALENDAR(ctk.CTkFrame):
+    def __init__(self, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.year = None
+        self.month = None
+        self.current_week = None
+        self.buttons = []
+        self.selected_button = None
+
+        self.configure(fg_color='#f2f2f2')
+        self.create_widgets()
+
+    def get_current_week(self):
+        cal = calendar.monthcalendar(self.year, self.month)
+
+        for i, week in enumerate(cal):
+            if datetime.now().day in week:
+                return i
+            return 0
+
+    def select_random_date(self):
+        if len(self.buttons) > 0:
+            random_date = random.choice(self.buttons)
+            random_date.change_state()
+            self.selected_button = random_date
+
+        print(f'{self.selected_button} has been selected randomly.')
+
+    def display_buttons(self):
+        if len(self.buttons) > 0:
+            for button in self.buttons:
+                print(button)
+
+    def set_current_date(self):
+        self.year = datetime.now().year
+        self.month = datetime.now().month
+
+    @staticmethod
+    def get_day(date):
+        if date:
+            day = date.strftime('%a')
+        else:
+            day = ""
+
+        return day
+
+    def create_widgets(self):
+        self.day_frame = ctk.CTkFrame(self, fg_color='#f2f2f2')
+        self.day_frame.pack(pady=40, anchor=CENTER)
+
+        self.display_week()
+        self.select_random_date()
+        self.display_buttons()
+
+    def clear_frame(self):
+        for child in self.day_frame.winfo_children():
+            child.destroy()
+
+        self.buttons.clear()
+
+        return logging.info(f">: Widgets have been removed from CALENDAR frame.")
+
+    def display_week(self):
+        self.set_current_date()
+        self.current_week = self.get_current_week()
+
+        cal = calendar.monthcalendar(self.year, self.month)
+        week = cal[self.current_week]
+
+        for row, day in enumerate(week):
+            frame = DATE_FRAME(self.day_frame, colour='#f2f2f2')
+
+            if day == 0:
+                state = False
+            else:
+                state = True
+            # text = "" if date == 0 else date
+            # state = "NORMAL" if date > 0 else "DISABLED"
+
+            if state:
+                weekday = self.get_day(datetime(self.year, self.month, day))
+                frame.date = day
+                frame.day = weekday
+
+                frame.create_labels()
+                frame.place_widgets()
+                frame.grid(row=0, column=row, sticky='nsew', padx=10)
+
+                frame.bind("<1>", lambda event, button=frame: self.select_button(button))
+                self.buttons.append(frame)
+
+    def select_button(self, button):
+        print(f"{button} has been selected. Current selected date is {self.selected_button}")
+
+        if self.selected_button:
+            self.selected_button.change_state()
+
+            button.change_state()
+            self.selected_button = button
+
+        print(f"Selected date has been changed to: {self.selected_button}")
+
+    # def create_widgets(self):
+    #     self.day_frame = ctk.CTkFrame(self, fg_color='red')
+    #     self.day_frame.pack(side='top', fill='x')
+    #
+    #     self.redraw(self.year, self.month)
+    #
+    # def redraw(self, year, month):
+    #     for d in self.day_frame.winfo_children():
+    #         d.destroy()
+    #
+    #     for col, day in enumerate(("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")):
+    #         frame = FRAME(master=self.day_frame, day=day)
+
+
 class IMAGE_BUTTON(ctk.CTkFrame):
     def __init__(self, master=None, description="", path=None, size=None, fg=None, font=None, command=None, **kwargs):
         super().__init__(master, **kwargs)
@@ -53,7 +231,7 @@ class IMAGE_BUTTON(ctk.CTkFrame):
         self.background_color = fg
         self.font = font
         self.name = self.text
-        self.command=command
+        self.command = command
 
         self.configure(fg_color=self.background_color, corner_radius=0)
 
@@ -268,6 +446,7 @@ class PATIENT_DASHBOARD(DASHBOARD):
         self.create_widgets()
         self.configure_menu()
         self.place_widgets()
+        self.show_frame(APPOINTMENTS)
 
     def configure_menu(self):
         self.buttons_frame.grid_columnconfigure(0, weight=0)
@@ -289,7 +468,21 @@ class APPOINTMENTS(ctk.CTkFrame):
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
 
-        self.configure(fg_color='red', corner_radius=0)
+        self.configure(fg_color='white')
+
+        self.create()
+        self.place()
+
+        print(datetime.now().year, datetime.now().month)
+
+    def create(self):
+        self.title = ctk.CTkLabel(self, text='Request new appointment', text_color='Black',
+                                  font=('Arial Bold', 35))
+        self.date_entry = CALENDAR(self)
+
+    def place(self):
+        self.title.pack(pady=(80, 5), padx=30, anchor=W)
+        self.date_entry.pack(pady=10, padx=30, anchor=W, ipadx=200)
 
 
 class DOCTOR_DASHBOARD(DASHBOARD):
