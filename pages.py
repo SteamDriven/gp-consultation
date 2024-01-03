@@ -1,5 +1,6 @@
 import logging
 import tkinter
+from functools import partial
 import tkinter as tk
 from tkinter import *
 import customtkinter as ctk
@@ -77,10 +78,10 @@ class DATE_FRAME(ctk.CTkFrame):
 
         return print(f"Date has now been set to {self.date}")
 
-    def change_color(self, bg, color):
-        self.configure(fg_color=bg)
-        self.day_label.configure(text_color=color, fg_color=bg)
-        self.date_label.configure(text_color=color, fg_color=bg)
+    def change_color(self, back, color):
+        self.configure(fg_color=back)
+        self.day_label.configure(text_color=color, fg_color=back)
+        self.date_label.configure(text_color=color, fg_color=back)
 
     def change_state(self):
         if self.state == 'DISABLED':
@@ -95,6 +96,9 @@ class DATE_FRAME(ctk.CTkFrame):
 
 
 class CALENDAR(ctk.CTkFrame):
+    LEFT_ARROW_PATH = "Images/Left_arrow.PNG"
+    RIGHT_ARROW_PATH = "Images/Right_arrow.PNG"
+
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
 
@@ -105,6 +109,8 @@ class CALENDAR(ctk.CTkFrame):
         self.selected_button = None
 
         self.configure(fg_color='#f2f2f2')
+        self.grid_columnconfigure((0, 2), weight=0)
+        self.grid_columnconfigure(1, weight=1)
         self.create_widgets()
 
     def get_current_week(self):
@@ -115,11 +121,11 @@ class CALENDAR(ctk.CTkFrame):
                 return i
             return 0
 
-    def select_random_date(self):
+    def select_date(self, index):
         if len(self.buttons) > 0:
-            random_date = random.choice(self.buttons)
-            random_date.change_state()
-            self.selected_button = random_date
+            selected = self.buttons[index]
+            selected.change_state()
+            self.selected_button = selected
 
         print(f'{self.selected_button} has been selected randomly.')
 
@@ -132,6 +138,9 @@ class CALENDAR(ctk.CTkFrame):
         self.year = datetime.now().year
         self.month = datetime.now().month
 
+        if self.year and self.month:
+            self.current_week = self.get_current_week()
+
     @staticmethod
     def get_day(date):
         if date:
@@ -142,25 +151,37 @@ class CALENDAR(ctk.CTkFrame):
         return day
 
     def create_widgets(self):
+        self.set_current_date()
         self.day_frame = ctk.CTkFrame(self, fg_color='#f2f2f2')
-        self.day_frame.pack(pady=40, anchor=CENTER)
+        self.day_frame.grid(row=0, column=1, pady=40)
+
+        left_image = Image.open(self.LEFT_ARROW_PATH)
+        right_image = Image.open(self.RIGHT_ARROW_PATH)
+        left_image_ck = ctk.CTkImage(left_image, size=(61, 73))
+        right_image_ck = ctk.CTkImage(right_image, size=(69, 76))
+
+        next_week = partial(self.change_week, True)
+        prev_week = partial(self.change_week, False)
+
+        self.left_arrow = ctk.CTkButton(self, image=left_image_ck, text='', fg_color='#f2f2f2', hover=False,
+                                        command=prev_week)
+        self.right_arrow = ctk.CTkButton(self, image=right_image_ck, text='', fg_color='#f2f2f2', hover=False,
+                                         command=next_week)
+
+        self.left_arrow.grid(row=0, column=0, padx=5)
+        self.right_arrow.grid(row=0, column=2, padx=5)
 
         self.display_week()
-        self.select_random_date()
+        self.select_date(0)
         self.display_buttons()
 
     def clear_frame(self):
         for child in self.day_frame.winfo_children():
             child.destroy()
 
-        self.buttons.clear()
-
-        return logging.info(f">: Widgets have been removed from CALENDAR frame.")
+        self.buttons = []
 
     def display_week(self):
-        self.set_current_date()
-        self.current_week = self.get_current_week()
-
         cal = calendar.monthcalendar(self.year, self.month)
         week = cal[self.current_week]
 
@@ -181,10 +202,41 @@ class CALENDAR(ctk.CTkFrame):
 
                 frame.create_labels()
                 frame.place_widgets()
-                frame.grid(row=0, column=row, sticky='nsew', padx=10)
+                frame.grid(row=0, column=row, sticky='nsew', padx=15)
 
                 frame.bind("<1>", lambda event, button=frame: self.select_button(button))
                 self.buttons.append(frame)
+
+    def update_calendar(self):
+        if self.current_week >= len(calendar.monthcalendar(self.year, self.month)):
+            self.current_week = 0
+            self.month += 1
+
+            if self.month > 12:
+                self.month = 1
+                self.year += 1
+
+        if self.current_week < 0:
+            self.month -= 1
+
+            if self.month < 1:
+                self.month = 12
+                self.year -= 1
+
+            self.current_week = len(calendar.monthcalendar(self.year, self.month)) - 1
+
+    def change_week(self, direction):
+
+        if direction:
+            self.current_week += 1
+        else:
+            self.current_week -= 1
+
+        self.update_calendar()
+
+        self.clear_frame()
+        self.display_week()
+        self.select_date(0)
 
     def select_button(self, button):
         print(f"{button} has been selected. Current selected date is {self.selected_button}")
