@@ -525,8 +525,8 @@ class DASHBOARD(ctk.CTkFrame):
         if frame:
             print('Displaying frame:', cont)
 
-            frame.tkraise()
             frame.pack(side="left", fill="both", expand=True)
+            frame.tkraise()
 
 
 class PATIENT_DASHBOARD(DASHBOARD):
@@ -537,12 +537,16 @@ class PATIENT_DASHBOARD(DASHBOARD):
 
         self.user_type = "Patient"
         self.appointment_data = DataManager()
+        self.pages_list = {
+            "request_app": REQUEST_APPOINTMENTS,
+            "symptoms": SYMPTOMS,
+        }
 
         self.buttons = {
             'Appointments': {
                 "path": 'Images/Appointments.PNG',
                 "size": (56, 60),
-                "command": lambda: self.show_frame(REQUEST_APPOINTMENTS)
+                "command": lambda: self.show_frame("request_app")
             },
             'Profile': {
                 "path": 'Images/Profile.PNG',
@@ -571,11 +575,10 @@ class PATIENT_DASHBOARD(DASHBOARD):
         self.place_widgets()
 
         self.frames = {}
-        self.pages_list = [REQUEST_APPOINTMENTS, SYMPTOMS]
-        for F in self.pages_list:
-            frame = F(self.main_frame, self)
-
-            self.frames[F] = frame
+        for key, value in self.pages_list.items():
+            self.frames[key] = value(self.main_frame, self)
+            # self.frames[key].grid(row=0, column=0, sticky='nsew')
+            # self.frames[key].pack(side="top", fill="both", expand=True)
 
         self.show_frame(REQUEST_APPOINTMENTS)
 
@@ -584,7 +587,10 @@ class PATIENT_DASHBOARD(DASHBOARD):
         print('Displaying frame:', cont)
 
         try:
-            frame.pack(side="left", fill="both", expand=True)
+            for f in self.frames.values():
+                f.pack_forget()
+
+            frame.pack(side="top", fill="both", expand=True)
             frame.tkraise()
 
         except Exception as e:
