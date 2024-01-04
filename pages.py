@@ -1,4 +1,3 @@
-import logging
 import tkinter
 from functools import partial
 import tkinter as tk
@@ -7,7 +6,17 @@ import customtkinter as ctk
 from PIL import Image
 import calendar
 from datetime import datetime
-import random
+
+
+class DataManager:
+    selected_time = None
+    selected_day = None
+
+    def update_times(self, time, day):
+        self.selected_time = time
+        self.selected_day = day
+
+        print(f"TIME: {self.selected_time}, DAY: {self.selected_day}")
 
 
 class ENTRY(ctk.CTkFrame):
@@ -36,6 +45,60 @@ class ENTRY(ctk.CTkFrame):
 
     def clear_entry(self):
         self.entry.delete(0, END)
+
+
+class BUTTON(ctk.CTkFrame):
+    ENABLED_TEXT = 'white'
+    DISABLED_TEXT = '#0f0e0c'
+    ENABLED_BG = '#4c6fbf'
+    DISABLED_BG = '#e7e5e5'
+
+    def __init__(self, master=None, placeholder="placeholder", background=None, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.state = False
+        self.placeholder = placeholder
+        self.background = background
+        self.col = 0
+
+        self.configure(corner_radius=0, fg_color=self.DISABLED_BG)
+
+        self.create_widgets()
+        self.place_widgets()
+
+    # def __repr__(self):
+    #     return f"BUTTON: {self.placeholder}, {self.state}"
+
+    def __str__(self):
+        return f"BUTTON: {self.placeholder}, {self.state}"
+
+    def create_widgets(self):
+        self.label = ctk.CTkLabel(self, text=self.placeholder, fg_color=self.DISABLED_BG, text_color=self.DISABLED_TEXT,
+                                  font=('Arial bold', 25), corner_radius=0)
+
+    def place_widgets(self):
+        self.label.pack(padx=10, pady=10, anchor=CENTER)
+
+    def update_background(self, color):
+        self.configure(fg_color=color)
+        self.label.configure(fg_color=color)
+
+    def update_text_color(self, color):
+        self.label.configure(text_color=color)
+
+    def change_state(self):
+        if not self.state:
+            self.state = True
+
+            self.update_background(self.ENABLED_BG)
+            self.update_text_color(self.ENABLED_TEXT)
+        else:
+            self.state = False
+
+            self.update_background(self.DISABLED_BG)
+            self.update_text_color(self.DISABLED_TEXT)
+
+        return self.state
 
 
 class DATE_FRAME(ctk.CTkFrame):
@@ -121,6 +184,9 @@ class CALENDAR(ctk.CTkFrame):
                 return i
             return 0
 
+    def get_selected_button(self):
+        return self.selected_button
+
     def select_date(self, index):
         if len(self.buttons) > 0:
             selected = self.buttons[index]
@@ -204,7 +270,7 @@ class CALENDAR(ctk.CTkFrame):
                 frame.place_widgets()
                 frame.grid(row=0, column=row, sticky='nsew', padx=15)
 
-                frame.bind("<1>", lambda event, button=frame: self.select_button(button))
+                frame.bind("<1>", lambda event, button=frame: self.select_button(event, button))
                 self.buttons.append(frame)
 
     def update_calendar(self):
@@ -238,7 +304,7 @@ class CALENDAR(ctk.CTkFrame):
         self.display_week()
         self.select_date(0)
 
-    def select_button(self, button):
+    def select_button(self, event, button):
         print(f"{button} has been selected. Current selected date is {self.selected_button}")
 
         if self.selected_button:
@@ -406,11 +472,14 @@ class DASHBOARD(ctk.CTkFrame):
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
 
+        print(f"{self.__class__.__name__} successfully initialised.")
+
         # CONFIGURATIONS
         self.user_type = "Loading"
         self.controller = controller
+        self.current_frame = None
         self.frames = {}
-        self.pages_list = [APPOINTMENTS]
+        self.pages_list = []
 
         self.logo_image_path = "Images/Logo_Bluebg.png"
 
@@ -451,27 +520,29 @@ class DASHBOARD(ctk.CTkFrame):
         self.buttons_frame.pack(pady=80, anchor=CENTER)
         self.main_frame.grid(row=1, column=1, rowspan=2, sticky='nsew')
 
-        for F in self.pages_list:
-            frame = F(self.main_frame, self)
-
-            self.frames[F] = frame
-
     def show_frame(self, cont):
         frame = self.frames[cont]
-        frame.tkraise()
-        frame.pack(side="left", fill="both", expand=True)
+        if frame:
+            print('Displaying frame:', cont)
+
+            frame.tkraise()
+            frame.pack(side="left", fill="both", expand=True)
 
 
 class PATIENT_DASHBOARD(DASHBOARD):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
 
+        print(f"{self.__class__.__name__} successfully initialised.")
+
         self.user_type = "Patient"
+        self.appointment_data = DataManager()
+
         self.buttons = {
             'Appointments': {
                 "path": 'Images/Appointments.PNG',
                 "size": (56, 60),
-                "command": lambda: self.show_frame(APPOINTMENTS)
+                "command": lambda: self.show_frame(REQUEST_APPOINTMENTS)
             },
             'Profile': {
                 "path": 'Images/Profile.PNG',
@@ -498,7 +569,26 @@ class PATIENT_DASHBOARD(DASHBOARD):
         self.create_widgets()
         self.configure_menu()
         self.place_widgets()
-        self.show_frame(APPOINTMENTS)
+
+        self.frames = {}
+        self.pages_list = [REQUEST_APPOINTMENTS, SYMPTOMS]
+        for F in self.pages_list:
+            frame = F(self.main_frame, self)
+
+            self.frames[F] = frame
+
+        self.show_frame(REQUEST_APPOINTMENTS)
+
+    def show_frame(self, cont):
+        frame = self.frames[cont]
+        print('Displaying frame:', cont)
+
+        try:
+            frame.pack(side="left", fill="both", expand=True)
+            frame.tkraise()
+
+        except Exception as e:
+            print(f"Error in show_frame: {e}")
 
     def configure_menu(self):
         self.buttons_frame.grid_columnconfigure(0, weight=0)
@@ -516,25 +606,94 @@ class PATIENT_DASHBOARD(DASHBOARD):
             button.pack(pady=30, anchor=W)
 
 
-class APPOINTMENTS(ctk.CTkFrame):
+class REQUEST_APPOINTMENTS(ctk.CTkFrame):
+
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
 
+        print(f"{self.__class__.__name__} successfully initialised.")
+
         self.configure(fg_color='white')
+        self.available_times = ['Morning', 'Early Afternoon', 'Late Afternoon', 'Evening']
+        self.selected_time = None
+        self.buttons = []
+        self.control = controller
 
         self.create()
         self.place()
+        self.update_selected(0)
 
-        print(datetime.now().year, datetime.now().month)
+    def create_buttons(self):
+        for index, time in enumerate(self.available_times):
+            print(index, time)
+
+            button = BUTTON(self.time_frame, time)
+            button.col = index
+
+            button.bind("<1>", lambda event, widget=button: self.select_button(event, widget))
+            self.buttons.append(button)
+
+        return self.buttons
+
+    def select_button(self, event, widget):
+        if self.selected_time:
+            self.selected_time.change_state()
+
+            widget.change_state()
+            self.selected_time = widget
+
+        print(f"Selected time has been changed to: {self.selected_time}")
+
+    def update_selected(self, index):
+        if len(self.buttons) > 0:
+            self.selected_time = self.buttons[index]
+            self.selected_time.change_state()
+
+        return print(f"Selected time has been updated to: {self.selected_time}")
+
+    def update_time(self):
+        self.control.appointment_data.update_times(self.selected_time, self.date_entry.selected_button)
+        self.control.show_frame(SYMPTOMS)
 
     def create(self):
         self.title = ctk.CTkLabel(self, text='Request new appointment', text_color='Black',
                                   font=('Arial Bold', 35))
         self.date_entry = CALENDAR(self)
+        self.time_frame = ctk.CTkFrame(self, fg_color='white', corner_radius=0)
+        self.confirm = ctk.CTkButton(self, fg_color='#b1c9eb', corner_radius=2, text='Confirm Booking',
+                                     font=('Arial Bold', 25), text_color='white', hover_color='#7c99c4',
+                                     command=lambda: self.update_time())
 
     def place(self):
         self.title.pack(pady=(80, 5), padx=30, anchor=W)
         self.date_entry.pack(pady=10, padx=30, anchor=W, ipadx=200)
+        self.time_frame.pack(pady=15, padx=30, anchor=CENTER)
+
+        buttons = self.create_buttons()
+        for button in buttons:
+            button.grid(row=0, column=button.col, padx=25, pady=10, sticky='nsew', ipadx=80)
+
+        self.confirm.pack(side='bottom', pady=80, anchor=CENTER, ipadx=20, ipady=5)
+
+
+class SYMPTOMS(ctk.CTkFrame):
+    def __init__(self, parent, controller):
+        ctk.CTkFrame.__init__(self, parent)
+
+        print(f"{self.__class__.__name__} successfully initialised.")
+
+        self.controller = controller
+        self.configure(fg_color='white')
+
+        self.create()
+        self.place()
+
+    def create(self):
+        self.title = ctk.CTkLabel(self, text='Discuss your symptoms', text_color='Black',
+                                  font=('Arial Bold', 35))
+
+    def place(self):
+        self.title.pack(pady=(80, 5), padx=30, anchor=W)
 
 
 class DOCTOR_DASHBOARD(DASHBOARD):
