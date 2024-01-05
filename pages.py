@@ -738,9 +738,9 @@ class PATIENT_DASHBOARD(DASHBOARD):
             # self.frames[key].grid(row=0, column=0, sticky='nsew')
             # self.frames[key].pack(side="top", fill="both", expand=True)
 
-        self.show_frame(REQUEST_APPOINTMENTS)
+        self.show_frame("request_app")
 
-    def show_frame(self, cont):
+    def show_frame(self, cont: str):
         frame = self.frames[cont]
         print('Displaying frame:', cont)
 
@@ -781,7 +781,11 @@ class REQUEST_APPOINTMENTS(ctk.CTkFrame):
         self.available_times = ['Morning', 'Early Afternoon', 'Late Afternoon', 'Evening']
         self.selected_time = None
         self.buttons = []
-        self.control = controller
+        self.control: PATIENT_DASHBOARD = controller
+        self.title = None
+        self.date_entry = None
+        self.time_frame = None
+        self.confirm = None
 
         self.create()
         self.place()
@@ -816,8 +820,10 @@ class REQUEST_APPOINTMENTS(ctk.CTkFrame):
         return print(f"Selected time has been updated to: {self.selected_time}")
 
     def update_time(self):
-        self.control.appointment_data.update_times(self.selected_time, self.date_entry.selected_button)
-        self.control.show_frame(SYMPTOMS)
+        data.day = self.date_entry.selected_button
+        data.time = self.selected_time
+        # self.control.appointment_data.update_times(self.selected_time, self.date_entry.selected_button)
+        self.control.show_frame("symptoms")
 
     def create(self):
         self.title = ctk.CTkLabel(self, text='Request new appointment', text_color='Black',
