@@ -19,6 +19,96 @@ class DataManager:
         print(f"TIME: {self.selected_time}, DAY: {self.selected_day}")
 
 
+class Label(ctk.CTkFrame):
+    DEFAULT_FONT = ('Arial Bold', 25)
+
+    def __init__(self, master=None, color='white', bg='#4c6fbf', text='Loading', font=None, side=None, state='normal', **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.text_col = color
+        self.fg = bg
+        self.text = text
+        self.state = state
+
+        if self.state == 'special':
+            self.bind('<1>', self.change_type)
+
+        if font:
+            self.font = font
+        else:
+            self.font = self.DEFAULT_FONT
+
+        if side:
+            self.side = side
+        else:
+            self.side = 'right'
+
+        self.configure(fg_color=self.fg, corner_radius=0)
+
+        self.label = ctk.CTkLabel(self, text=self.text, fg_color=self.fg, text_color=self.text_col,
+                                  font=self.font)
+
+        self.label.pack(side=self.side, padx=10)
+
+    def change_type(self, event):
+        print('Changing to entry.')
+
+
+class Entry(ctk.CTkFrame):
+    DEFAULT_TEXT_COL = '#cecaca'
+    DEFAULT_ENTRY_FONT = ('Arial Light', 30)
+    DEFAULT_FONT = ('Arial Bold', 25)
+
+    def __init__(self, master=None, placeholder='Enter response here', **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.placeholder = placeholder
+        self.configure(fg_color='#f2f2f2', corner_radius=0)
+
+        self.setup_box()
+        self.place_box()
+
+    def create_entry(self):
+        pass
+
+    def setup_box(self):
+        self.txt = Label(self, text='Enter response here...', bg='white', font=self.DEFAULT_ENTRY_FONT, side='left',
+                         color=self.DEFAULT_TEXT_COL, state='special')
+        self.send_button = ctk.CTkButton(self, text='Send', font=self.DEFAULT_FONT, text_color='white',
+                                         corner_radius=5, fg_color='#7b96d4', width=250, anchor='w')
+
+    def place_box(self):
+        self.send_button.pack(side='right', ipady=5)
+        self.txt.pack(fill='both', expand=True, anchor=CENTER, padx=5, pady=5)
+
+
+class Chat(ctk.CTkFrame):
+    DEFAULT_TEXT = 'white'
+    DEFAULT_BG = '#4c6fbf'
+    DEFAULT_CHAT_BG = '#f2f2f2'
+
+    def __init__(self, master=None, title='AI Chat', state='AI', **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.title = title
+        self.state = state
+
+        self.setup_chat()
+        self.create_chat()
+
+    def setup_chat(self):
+        self.container = ctk.CTkFrame(self, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
+        self.label = Label(self.container, text=self.title)
+        self.chat_frame = ctk.CTkScrollableFrame(self.container, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
+        self.chat_box = Entry(self.container)
+
+    def create_chat(self):
+        self.container.pack(fill='both', expand=True)
+        self.label.pack(fill='x', ipady=5)
+        self.chat_frame.pack(fill='both', expand=True)
+        self.chat_box.pack(side='bottom', fill='x', pady=15, padx=15, ipady=5)
+
+
 class ENTRY(ctk.CTkFrame):
 
     def __init__(self, master=None, placeholder="", show_bullet=False, font=None, min_width=None, **kwargs):
@@ -696,10 +786,15 @@ class SYMPTOMS(ctk.CTkFrame):
 
     def create(self):
         self.title = ctk.CTkLabel(self, text='Discuss your symptoms', text_color='Black',
-                                  font=('Arial Bold', 35))
+                                  font=('Arial Bold', 30))
+        self.ai_chat = Chat(self)
+        self.cancel_button = ctk.CTkButton(self, text='Cancel Request', text_color='white', font=('Arial Bold', 20),
+                                           fg_color='#b1c9eb', corner_radius=5)
 
     def place(self):
         self.title.pack(pady=(80, 5), padx=30, anchor=W)
+        self.ai_chat.pack(fill='both', expand=True, padx=30, pady=(20, 0))
+        self.cancel_button.pack(side='right', padx=30, pady=(20, 120), ipadx=30, ipady=5)
 
 
 class DOCTOR_DASHBOARD(DASHBOARD):
