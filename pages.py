@@ -8,21 +8,58 @@ import calendar
 from datetime import datetime
 
 
-class DataManager:
-    selected_time = None
-    selected_day = None
+class appointmentData:
+    def __init__(self):
+        self._selected_time = None
+        self._selected_day = None
+        self._patient = None
+        self._doctor = None
 
-    def update_times(self, time, day):
-        self.selected_time = time
-        self.selected_day = day
+    @property
+    def time(self):
+        return self._selected_time
 
-        print(f"TIME: {self.selected_time}, DAY: {self.selected_day}")
+    @property
+    def doctor(self):
+        return self._doctor
+
+    @property
+    def day(self):
+        return self._selected_day
+
+    @property
+    def patient(self):
+        return self._patient
+
+    @time.setter
+    def time(self, newTime):
+        self._selected_time = newTime
+        print(f"TIME: {self._selected_time}")
+
+    @doctor.setter
+    def doctor(self, newDoctor):
+        self._doctor = newDoctor
+        print(f"DOCTOR: {self._doctor}")
+
+    @day.setter
+    def day(self, newDay):
+        self._selected_day = newDay
+        print(f"DAY: {self._selected_day}")
+
+    @patient.setter
+    def patient(self, newPatient):
+        self._patient = newPatient
+        print(f"PATIENT: {self._patient}")
+
+
+data = appointmentData()
 
 
 class Label(ctk.CTkFrame):
     DEFAULT_FONT = ('Arial Bold', 25)
 
-    def __init__(self, master=None, color='white', bg='#4c6fbf', text='Loading', font=None, side=None, state='normal', **kwargs):
+    def __init__(self, master=None, color='white', bg='#4c6fbf', text='Loading', font=None, side=None, state='normal',
+                 **kwargs):
         super().__init__(master, **kwargs)
 
         self.text_col = color
@@ -86,6 +123,38 @@ class Chat(ctk.CTkFrame):
     DEFAULT_TEXT = 'white'
     DEFAULT_BG = '#4c6fbf'
     DEFAULT_CHAT_BG = '#f2f2f2'
+
+    ai_messages = {
+        'greeting_prompt': f"""Hello, {data.patient}!.
+                        Please describe your symptoms in detail.
+                        Include information such as when they started,
+                        their intensity, and any other relevant information.""",
+
+        'images_prompt': f"""Fantastic, thank you {data.patient}.
+                        I'll be sure to note those down for you. 
+                        If possible, can you please attach any relevant images
+                        of affected areas or symptoms you're having.
+                        If not, don't you worry about it.""",
+
+        "gp_prompt": """Would you like to choose a specific GP from our
+                    provided list of available clinicians?""",
+
+        "gp_declined_prompt": f"""Great, I really appreciate that {data.patient}.
+                            Your request will be sent and an available clinician will be assigned to you shortly,
+                            along with all the detail you've provided me today. You'll be notified on your dash
+                            when they have accepted your request. Be sure to keep a look out on your NOTIFICATIONS
+                            tab. 
+                            
+                            Have a nice day!""",
+
+        "gp_accepted_prompt": "Please select one of the available GPs listed below:",
+
+        "gp_completed_prompt": f"""Great, thank you {data.patient}. Your request has been sent to DR {data.doctor},
+                            along with all your submitted details today. You'll be notified on your dash when your 
+                            request has been accepted. Be sure to keep a look out on your NOTIFICATIONS tab. 
+                            
+                            Have a nice day!"""
+    }
 
     def __init__(self, master=None, title='AI Chat', state='AI', **kwargs):
         super().__init__(master, **kwargs)
@@ -626,7 +695,6 @@ class PATIENT_DASHBOARD(DASHBOARD):
         print(f"{self.__class__.__name__} successfully initialised.")
 
         self.user_type = "Patient"
-        self.appointment_data = DataManager()
         self.pages_list = {
             "request_app": REQUEST_APPOINTMENTS,
             "symptoms": SYMPTOMS,
@@ -790,6 +858,8 @@ class SYMPTOMS(ctk.CTkFrame):
         self.ai_chat = Chat(self)
         self.cancel_button = ctk.CTkButton(self, text='Cancel Request', text_color='white', font=('Arial Bold', 20),
                                            fg_color='#b1c9eb', corner_radius=5)
+
+        # Start the chatting between patient and AI, handled client-side only.
 
     def place(self):
         self.title.pack(pady=(80, 5), padx=30, anchor=W)

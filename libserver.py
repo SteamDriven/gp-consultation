@@ -21,6 +21,7 @@ class Server:
     COMMAND_PASSED = 'PASSED'
     COMMAND_ACCEPT = 'ACCEPT'
     COMMAND_DENY = 'DENY'
+    COMMAND_AI = 'AI_CHAT'
 
     USER_ROLE_CLINICIAN = 'CLINICIAN'
     USER_ROLE_PATIENT = 'PATIENT'
@@ -118,6 +119,10 @@ class Server:
             else:
                 message = json.loads(data.decode())
 
+                if message['COMMAND'] == self.COMMAND_AI:
+                    logging.info('>: Client requested a chat with AI.')
+                    self.handle_ai_chat()
+
                 if message['COMMAND'] == self.COMMAND_REGISTER:
                     logging.info(">: Client requested to be registered to the database.")
 
@@ -173,6 +178,9 @@ class Server:
 
                         logging.debug(self.message)
                         client.send(json.dumps(self.message).encode())
+
+    def handle_ai_chat(self):
+        pass
 
     def setup_server(self):
         """

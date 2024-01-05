@@ -1,13 +1,13 @@
-import tkinter
-import customtkinter
-import customtkinter as ctk
-import re
-from pages import LOGIN, PATIENT_DASHBOARD
-from tkinter import messagebox
-from libclient import Client
 import logging
 import random
+import re
 import string
+from tkinter import messagebox
+
+import customtkinter as ctk
+
+from libclient import Client
+from pages import LOGIN, PATIENT_DASHBOARD, data
 
 port = 50000
 
@@ -109,8 +109,6 @@ class APP(ctk.CTk):
         # self.create_random_doctor()
         # self.create_random_patient()
 
-        self.cur_user = []
-
         # Widgets
         container = ctk.CTkFrame(self)
         container.pack(expand=True, fill='both')
@@ -167,8 +165,7 @@ class APP(ctk.CTk):
         elif action == 'SHOW LOGIN WARNING':
             self.handle_failed_login()
 
-        self.cur_user = accepted[1]
-        print(self.cur_user)
+        data.patient = accepted[1]
 
     @staticmethod
     def generate_user_data(user_type, server_commands):
