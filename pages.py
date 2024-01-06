@@ -1,3 +1,4 @@
+import textwrap
 import tkinter
 from functools import partial
 import tkinter as tk
@@ -66,6 +67,8 @@ class Label(ctk.CTkFrame):
         self.fg = bg
         self.text = text
         self.state = state
+        self.textbox = None
+        self.client_message = None
 
         if self.state == 'special':
             self.bind('<1>', self.change_type)
@@ -87,8 +90,21 @@ class Label(ctk.CTkFrame):
 
         self.label.pack(side=self.side, padx=10)
 
+    def get_message(self):
+        self.client_message = self.textbox.get("0.0", "end")
+        self.textbox.delete("0.0", "end")
+        return self.client_message
+
+    def create_textbox(self):
+        self.textbox = ctk.CTkTextbox(self, fg_color=self.fg, text_color=self.text_col, font=self.font, corner_radius=0,
+                                      border_width=0, height=10)
+        self.textbox.focus_set()
+
     def change_type(self, event):
         print('Changing to entry.')
+        self.create_textbox()
+        self.label.pack_forget()
+        self.textbox.pack(side=self.side, fill='x', expand=True, padx=10)
 
 
 class Entry(ctk.CTkFrame):
@@ -96,10 +112,11 @@ class Entry(ctk.CTkFrame):
     DEFAULT_ENTRY_FONT = ('Arial Light', 30)
     DEFAULT_FONT = ('Arial Bold', 25)
 
-    def __init__(self, master=None, placeholder='Enter response here', **kwargs):
+    def __init__(self, master=None, placeholder='Enter response here', command=None, **kwargs):
         super().__init__(master, **kwargs)
 
         self.placeholder = placeholder
+        self.command = command
         self.configure(fg_color='#f2f2f2', corner_radius=0)
 
         self.setup_box()
@@ -112,11 +129,29 @@ class Entry(ctk.CTkFrame):
         self.txt = Label(self, text='Enter response here...', bg='white', font=self.DEFAULT_ENTRY_FONT, side='left',
                          color=self.DEFAULT_TEXT_COL, state='special')
         self.send_button = ctk.CTkButton(self, text='Send', font=self.DEFAULT_FONT, text_color='white',
-                                         corner_radius=5, fg_color='#7b96d4', width=250, anchor='w')
+                                         corner_radius=5, fg_color='#7b96d4', width=250, anchor='w',
+                                         command=self.command)
 
     def place_box(self):
         self.send_button.pack(side='right', ipady=5)
         self.txt.pack(fill='both', expand=True, anchor=CENTER, padx=5, pady=5)
+
+
+class MessageBox(ctk.CTkFrame):
+    def __init__(self, master=None, fg='#b1c9eb', message=None, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.fg = fg
+        self.message = message
+        self.message_text = None
+
+        self.configure(fg_color=self.fg, corner_radius=3)
+        self.create_widget()
+
+    def create_widget(self):
+        self.message_text = ctk.CTkLabel(self, fg_color=self.fg, text=self.message, text_color='white',
+                                         font=('Arial Light', 20), justify='left')
+        self.message_text.pack(padx=5, pady=5)
 
 
 class Chat(ctk.CTkFrame):
@@ -124,22 +159,30 @@ class Chat(ctk.CTkFrame):
     DEFAULT_BG = '#4c6fbf'
     DEFAULT_CHAT_BG = '#f2f2f2'
 
-    ai_messages = {
-        'greeting_prompt': f"""Hello, {data.patient}!.
-                        Please describe your symptoms in detail.
-                        Include information such as when they started,
-                        their intensity, and any other relevant information.""",
+    services = ['service', 'client', 'image', 'other']
+    # ai_conversation_states = ['greeting_prompt',
+    #                           'images_prompt',
+    #                           'gp_prompt',
+    #                           'gp_declined_prompt',
+    #                           'gp_accepted_prompt',
+    #                           'gp_completed_prompt'
+    #                           ]
 
-        'images_prompt': f"""Fantastic, thank you {data.patient}.
-                        I'll be sure to note those down for you. 
-                        If possible, can you please attach any relevant images
-                        of affected areas or symptoms you're having.
-                        If not, don't you worry about it.""",
+    ai_states = {
+        'greeting': (f"Hello, {data.patient}!. "
+                     "Please describe your symptoms in detail. \n"
+                     "Include information such as when they started, "
+                     "their intensity, \nand any other relevant information."),
 
-        "gp_prompt": """Would you like to choose a specific GP from our
+        'images': (f"Fantastic, thank you {data.patient}. "
+                    "I'll be sure to note those down for you.\n"
+                    "If possible, can you please attach any relevant images of affected areas\nor symptoms you're "
+                    "having and if not, don't you worry about it."),
+
+        "prompt": """Would you like to choose a specific GP from our
                     provided list of available clinicians?""",
 
-        "gp_declined_prompt": f"""Great, I really appreciate that {data.patient}.
+        "declined": f"""Great, I really appreciate that {data.patient}.
                             Your request will be sent and an available clinician will be assigned to you shortly,
                             along with all the detail you've provided me today. You'll be notified on your dash
                             when they have accepted your request. Be sure to keep a look out on your NOTIFICATIONS
@@ -147,35 +190,74 @@ class Chat(ctk.CTkFrame):
                             
                             Have a nice day!""",
 
-        "gp_accepted_prompt": "Please select one of the available GPs listed below:",
+        "accepted": "Please select one of the available GPs listed below:",
 
-        "gp_completed_prompt": f"""Great, thank you {data.patient}. Your request has been sent to DR {data.doctor},
+        "completed": f"""Great, thank you {data.patient}. Your request has been sent to DR {data.doctor},
                             along with all your submitted details today. You'll be notified on your dash when your 
                             request has been accepted. Be sure to keep a look out on your NOTIFICATIONS tab. 
                             
                             Have a nice day!"""
     }
 
-    def __init__(self, master=None, title='AI Chat', state='AI', **kwargs):
+    def __init__(self, master=None, title='AI Chat', **kwargs):
         super().__init__(master, **kwargs)
 
         self.title = title
-        self.state = state
+
+        self.container = None
+        self.label = None
+        self.chat_frame = None
+        self.chat_box = None
+        self.user_responses = {}
+        self.current_state = "greeting"
+        self.cur_row = 0
 
         self.setup_chat()
         self.create_chat()
+        self.create_message_box(f"Service: {self.ai_states[self.current_state]}", 'service')
+        self.current_state = 'images'
 
     def setup_chat(self):
         self.container = ctk.CTkFrame(self, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
         self.label = Label(self.container, text=self.title)
         self.chat_frame = ctk.CTkScrollableFrame(self.container, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
-        self.chat_box = Entry(self.container)
+        self.chat_box = Entry(self.container, command=self.handle_user_response)
 
     def create_chat(self):
         self.container.pack(fill='both', expand=True)
         self.label.pack(fill='x', ipady=5)
         self.chat_frame.pack(fill='both', expand=True)
         self.chat_box.pack(side='bottom', fill='x', pady=15, padx=15, ipady=5)
+
+    def handle_user_response(self):
+        message = self.chat_box.txt.get_message()
+        self.create_message_box(f"{data.patient}: {message}", 'client')
+        self.create_message_box(f"Service: {self.ai_states[self.current_state]}", 'service')
+
+    def create_message_box(self, message, type):
+        if type == self.services[0]:
+            chat = MessageBox(self.chat_frame, message=message)
+            chat.pack()
+        elif type == self.services[1]:
+            chat = MessageBox(self.chat_frame, message=message, fg='white')
+            chat.message_text.configure(text_color='#cecaca')
+            chat.pack()
+        elif type == self.services[2]:
+
+            # chat.pack(side='top', fill='x', padx=10, pady=60)
+            # chat.grid(row=self.cur_row, column=1, sticky='nsew', padx=600)
+            # self.cur_row += 1
+            # print(self.cur_row)
+    #
+    # def start_message(self, message, state):
+    #     if state == 'client':
+    #         print(f">: Creating {data.patient}'s message.")
+    #
+    #     elif state == 'service':
+    #         print(f">: Creating Service's message.")
+    #         self.create_message_box(message, state)
+    #     else:
+    #         print(f">: Creating other client's message.")
 
 
 class ENTRY(ctk.CTkFrame):
@@ -855,6 +937,10 @@ class SYMPTOMS(ctk.CTkFrame):
         self.controller = controller
         self.configure(fg_color='white')
 
+        self.title = None
+        self.ai_chat = None
+        self.cancel_button = None
+
         self.create()
         self.place()
 
@@ -864,8 +950,6 @@ class SYMPTOMS(ctk.CTkFrame):
         self.ai_chat = Chat(self)
         self.cancel_button = ctk.CTkButton(self, text='Cancel Request', text_color='white', font=('Arial Bold', 20),
                                            fg_color='#b1c9eb', corner_radius=5)
-
-        # Start the chatting between patient and AI, handled client-side only.
 
     def place(self):
         self.title.pack(pady=(80, 5), padx=30, anchor=W)
