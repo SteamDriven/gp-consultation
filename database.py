@@ -211,10 +211,10 @@ class Database:  # Created a class for Database along with necessary attributes
                     logging.info(f"User is a {role}")
 
                     if role == self.USER_ROLE_PATIENT:
-                        self.sql = '''SELECT First_Name FROM PATIENT WHERE EMAIL=? AND Password=?'''
+                        self.sql = '''SELECT First_Name, Last_Name FROM PATIENT WHERE EMAIL=? AND Password=?'''
 
                     else:
-                        self.sql = '''SELECT First_Name FROM CLINICIAN WHERE EMAIL=? AND Password=?'''
+                        self.sql = '''SELECT First_Name, Last_Name FROM CLINICIAN WHERE EMAIL=? AND Password=?'''
 
                     self.cursor.execute(self.sql, [email, password])
                     return [1 if role == self.USER_ROLE_PATIENT else 2, self.cursor.fetchone()]
