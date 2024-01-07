@@ -1,12 +1,16 @@
+import logging
 import textwrap
 import tkinter
 from functools import partial
 import tkinter as tk
 from tkinter import *
+from tkinter import filedialog
 import customtkinter as ctk
 from PIL import Image
 import calendar
 from datetime import datetime
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class appointmentData:
@@ -15,6 +19,8 @@ class appointmentData:
         self._selected_day = None
         self._patient = None
         self._doctor = None
+        self._symptoms = []
+        self._images = []
 
     @property
     def time(self):
@@ -25,6 +31,10 @@ class appointmentData:
         return self._doctor
 
     @property
+    def images(self):
+        return self._images
+
+    @property
     def day(self):
         return self._selected_day
 
@@ -32,25 +42,39 @@ class appointmentData:
     def patient(self):
         return self._patient
 
+    @property
+    def symptoms(self):
+        return self._symptoms
+
+    @symptoms.setter
+    def symptoms(self, newSymptoms):
+        self._symptoms = newSymptoms
+        logging.info(f"Appointment data > SYMPTOMS: {self._symptoms}")
+
     @time.setter
     def time(self, newTime):
         self._selected_time = newTime
-        print(f"TIME: {self._selected_time}")
+        logging.info(f"Appointment data > TIME: {self._selected_time}")
+
+    @images.setter
+    def images(self, newImage):
+        self._images = newImage
+        logging.info(f"Appointment data > IMAGE: {self._images}")
 
     @doctor.setter
     def doctor(self, newDoctor):
         self._doctor = newDoctor
-        print(f"DOCTOR: {self._doctor}")
+        logging.info(f"Appointment data > DOCTOR: {self._doctor}")
 
     @day.setter
     def day(self, newDay):
         self._selected_day = newDay
-        print(f"DAY: {self._selected_day}")
+        logging.info(f"Appointment data > DAY: {self._selected_day}")
 
     @patient.setter
     def patient(self, newPatient):
         self._patient = newPatient
-        print(f"PATIENT: {self._patient}")
+        logging.info(f"Appointment data > PATIENT: {self._patient}")
 
 
 data = appointmentData()
@@ -83,7 +107,7 @@ class Label(ctk.CTkFrame):
         else:
             self.side = 'right'
 
-        self.configure(fg_color=self.fg, corner_radius=0)
+        self.configure(fg_color=self.fg, corner_radius=4, border_width=1, border_color='light grey')
 
         self.label = ctk.CTkLabel(self, text=self.text, fg_color=self.fg, text_color=self.text_col,
                                   font=self.font)
@@ -92,6 +116,11 @@ class Label(ctk.CTkFrame):
 
     def get_message(self):
         self.client_message = self.textbox.get("0.0", "end")
+
+        if not self.client_message.strip():
+            self.textbox.delete("0.0", "end")
+            return False
+
         self.textbox.delete("0.0", "end")
         return self.client_message
 
@@ -99,20 +128,30 @@ class Label(ctk.CTkFrame):
         self.textbox = ctk.CTkTextbox(self, fg_color=self.fg, text_color=self.text_col, font=self.font, corner_radius=0,
                                       border_width=0, height=10)
         self.textbox.focus_set()
+        self.textbox.bind("<Return>", self.change_type)
 
     def change_type(self, event):
-        print('Changing to entry.')
-        self.create_textbox()
-        self.label.pack_forget()
-        self.textbox.pack(side=self.side, fill='x', expand=True, padx=10)
+        if self.textbox:
+            self.textbox.pack_forget()
+            self.textbox = None
+
+            self.label = ctk.CTkLabel(self, text=self.text, fg_color=self.fg, text_color=self.text_col,
+                                      font=self.font)
+            self.label.pack(side=self.side, padx=10)
+
+        else:
+            print('Changing to entry.')
+            self.create_textbox()
+            self.label.pack_forget()
+            self.textbox.pack(side=self.side, fill='x', expand=True, padx=10)
 
 
 class Entry(ctk.CTkFrame):
-    DEFAULT_TEXT_COL = '#cecaca'
-    DEFAULT_ENTRY_FONT = ('Arial Light', 30)
+    DEFAULT_TEXT_COL = 'grey'
+    DEFAULT_ENTRY_FONT = ('Arial Light', 15)
     DEFAULT_FONT = ('Arial Bold', 25)
 
-    def __init__(self, master=None, placeholder='Enter response here', command=None, **kwargs):
+    def __init__(self, master=None, placeholder='Type a message', command=None, **kwargs):
         super().__init__(master, **kwargs)
 
         self.placeholder = placeholder
@@ -126,32 +165,114 @@ class Entry(ctk.CTkFrame):
         pass
 
     def setup_box(self):
-        self.txt = Label(self, text='Enter response here...', bg='white', font=self.DEFAULT_ENTRY_FONT, side='left',
+        image = Image.open("Images/Send.PNG")
+        image_ck = ctk.CTkImage(image, size=(28, 28))
+
+        self.txt = Label(self, text=self.placeholder, bg='white', font=self.DEFAULT_ENTRY_FONT, side='left',
                          color=self.DEFAULT_TEXT_COL, state='special')
-        self.send_button = ctk.CTkButton(self, text='Send', font=self.DEFAULT_FONT, text_color='white',
-                                         corner_radius=5, fg_color='#7b96d4', width=250, anchor='w',
-                                         command=self.command)
+        self.send_button = ctk.CTkButton(self.txt, text='', fg_color='white', command=self.command, hover=False,
+                                         image=image_ck, width=5)
 
     def place_box(self):
-        self.send_button.pack(side='right', ipady=5)
+        self.send_button.pack(side='right', padx=5)
         self.txt.pack(fill='both', expand=True, anchor=CENTER, padx=5, pady=5)
 
 
+class UploadFrame(ctk.CTkFrame):
+    def __init__(self, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.header = None
+        self.container = None
+        self.browse = None
+        self.cancel = None
+        self.upload_image = None
+        self.description = None
+        self.photo = None
+        self.images = []
+
+        self.configure(fg_color='white', corner_radius=0, height=500, width=600)
+        self.pack_propagate(False)
+
+        self.create_frame()
+        self.setup_frame()
+
+    def create_frame(self):
+        path = 'Images/Upload.PNG'
+        image = Image.open(path)
+        image_ck = ctk.CTkImage(image, size=(88, 49))
+
+        self.header = ctk.CTkFrame(self, fg_color='#e7e5e5', corner_radius=0)
+        self.upload_image = ctk.CTkLabel(self.header, image=image_ck, fg_color='#e7e5e5', text='')
+        self.description = ctk.CTkLabel(self.header, fg_color='#e7e5e5', text='Upload your images here',
+                                        text_color='#737373', font=('Arial light', 20))
+        self.container = ctk.CTkScrollableFrame(self, fg_color='white', corner_radius=0, orientation='horizontal')
+        self.browse = ctk.CTkButton(self, fg_color='#7b96d4', corner_radius=0, text='Browse files',
+                                    text_color='white', font=('Arial Bold', 25), command=self.upload)
+        self.cancel = ctk.CTkButton(self, fg_color='white', text='No thanks', text_color='grey',
+                                    font=('Arial light', 15, 'underline'), hover=False)
+
+    def setup_frame(self):
+        self.header.pack(side='top', fill='x', anchor=CENTER)
+        self.upload_image.pack(side='top', pady=10, anchor=CENTER)
+        self.description.pack(anchor=CENTER, pady=5)
+        self.container.pack(anchor=CENTER, pady=10, fill='both')
+        self.browse.pack(pady=(40, 10), ipadx=25, ipady=10)
+        self.cancel.pack(pady=5)
+
+    def get_children(self):
+        children = self.container.winfo_children()
+        if children:
+            return children
+        else:
+            return False
+
+    def upload(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
+        print('done')
+
+        if file_path:
+            image = Image.open(file_path)
+            image_ck = ctk.CTkImage(image, size=(200, 200))
+
+            self.photo = ctk.CTkLabel(self.container, image=image_ck, text='', fg_color='white')
+            self.photo.pack(side='left', padx=5, pady=10)
+            self.images.append(image)
+
+
 class MessageBox(ctk.CTkFrame):
-    def __init__(self, master=None, fg='#b1c9eb', message=None, **kwargs):
+    def __init__(self, master=None, fg='#e8ebfa', message=None, name=None, **kwargs):
         super().__init__(master, **kwargs)
 
         self.fg = fg
         self.message = message
+        self.name = name
         self.message_text = None
+        self.data_frame = None
+        self.cur_time = None
+        self.cur_date = None
+        self.name_lbl = None
 
-        self.configure(fg_color=self.fg, corner_radius=3)
+        self.configure(fg_color='#f2f2f2', corner_radius=3)
         self.create_widget()
+        self.place_widgets()
 
     def create_widget(self):
-        self.message_text = ctk.CTkLabel(self, fg_color=self.fg, text=self.message, text_color='white',
-                                         font=('Arial Light', 20), justify='left')
-        self.message_text.pack(padx=5, pady=5)
+        self.data_frame = ctk.CTkFrame(self, fg_color='#f2f2f2')
+        self.name_lbl = ctk.CTkLabel(self.data_frame, text=self.name, text_color='#737373', font=('Arial light', 14))
+        self.cur_time = ctk.CTkLabel(self.data_frame, text=f"{datetime.now().strftime('%H:%M')}", text_color='#737373',
+                                     font=('Arial light', 13))
+        self.cur_date = ctk.CTkLabel(self.data_frame, text=f"{datetime.now().strftime('%m/%d/%y')}",
+                                     text_color='#737373', font=('Arial light', 13))
+        self.message_text = ctk.CTkLabel(self, fg_color=self.fg, text=self.message, text_color='#525254',
+                                         font=('Arial Light', 15), justify='left', corner_radius=5)
+
+    def place_widgets(self):
+        self.data_frame.pack(anchor=W)
+        self.name_lbl.pack(side='left', padx=(5, 10))
+        self.cur_time.pack(side='left', padx=5)
+        self.cur_date.pack(side='right', padx=5)
+        self.message_text.pack(padx=5, ipadx=10, ipady=10)
 
 
 class Chat(ctk.CTkFrame):
@@ -175,20 +296,25 @@ class Chat(ctk.CTkFrame):
                      "their intensity, \nand any other relevant information."),
 
         'images': (f"Fantastic, thank you {data.patient}. "
-                    "I'll be sure to note those down for you.\n"
-                    "If possible, can you please attach any relevant images of affected areas\nor symptoms you're "
-                    "having and if not, don't you worry about it."),
+                   "I'll be sure to note those down for you.\n"
+                   "If possible, can you please attach any relevant images of affected areas\nor symptoms you're "
+                   "having and if not, don't you worry about it."),
 
-        "prompt": """Would you like to choose a specific GP from our
-                    provided list of available clinicians?""",
+        'no-images': ("I see you've decided not to include any images.\n"
+                      "That's no problem, you will be able to attach images to your profile later."),
 
-        "declined": f"""Great, I really appreciate that {data.patient}.
-                            Your request will be sent and an available clinician will be assigned to you shortly,
-                            along with all the detail you've provided me today. You'll be notified on your dash
-                            when they have accepted your request. Be sure to keep a look out on your NOTIFICATIONS
-                            tab. 
-                            
-                            Have a nice day!""",
+        'yes-images': ("Thank you for submitting your images.\n"
+                       "This will help aid your GP in diagnosis."),
+
+        "prompt": ("Would you like to choose a specific GP from our\n"
+                   "provided list of available clinicians?"),
+
+        "declined": (f"Great thank you {data.patient}, I really appreciate that. "
+                     "Your request will be sent to an available clinician whom will be assigned\n"
+                     "to you shortly. All your details provided today will be provided too. Be sure"
+                     "to look out on your 'Notifications' tab for request acceptance.\n\nHave a nice day!."),
+
+        'confused': f"I apologise {data.patient}, I didn't get that. Could you please message again?",
 
         "accepted": "Please select one of the available GPs listed below:",
 
@@ -208,6 +334,7 @@ class Chat(ctk.CTkFrame):
         self.label = None
         self.chat_frame = None
         self.chat_box = None
+        self.upload_frame = None
         self.user_responses = {}
         self.current_state = "greeting"
         self.cur_row = 0
@@ -215,7 +342,6 @@ class Chat(ctk.CTkFrame):
         self.setup_chat()
         self.create_chat()
         self.create_message_box(f"Service: {self.ai_states[self.current_state]}", 'service')
-        self.current_state = 'images'
 
     def setup_chat(self):
         self.container = ctk.CTkFrame(self, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
@@ -223,26 +349,84 @@ class Chat(ctk.CTkFrame):
         self.chat_frame = ctk.CTkScrollableFrame(self.container, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
         self.chat_box = Entry(self.container, command=self.handle_user_response)
 
+    def disable_chat(self):
+        self.chat_box.pack_forget()
+
     def create_chat(self):
         self.container.pack(fill='both', expand=True)
         self.label.pack(fill='x', ipady=5)
-        self.chat_frame.pack(fill='both', expand=True)
+        self.chat_frame.pack(fill='both', expand=True, pady=(0, 10))
         self.chat_box.pack(side='bottom', fill='x', pady=15, padx=15, ipady=5)
+
+    def ignore_upload(self):
+        self.upload_frame.destroy()
+        self.upload_frame = None
+
+        self.create_message_box(f"{self.ai_states['no-images']}", 'service')
+        self.current_state = 'prompt'
+
+        self.create_message_box(f"{self.ai_states[self.current_state]}", 'service')
 
     def handle_user_response(self):
         message = self.chat_box.txt.get_message()
-        self.create_message_box(f"{data.patient}: {message}", 'client')
-        self.create_message_box(f"Service: {self.ai_states[self.current_state]}", 'service')
+        logging.info(f"User response: {message}")
+        logging.info(f"User chat state: {self.current_state}")
+
+        if not message:
+            self.create_message_box(f"{self.ai_states['confused']}", 'service')
+            return
+
+        if self.current_state == 'greeting':
+            data.symptoms = message
+            self.current_state = 'images'
+
+        self.create_message_box(f"{message}", 'client')
+
+        if self.current_state == 'images' and self.upload_frame is not None:
+            logging.info("User has already received an offer to upload symptoms.")
+
+            uploaded_images = self.upload_frame.get_children()
+            if not uploaded_images:
+                self.create_message_box(f"{self.ai_states['no-images']}", 'service')
+
+            else:
+                self.create_message_box(f"{self.ai_states['yes-images']}", 'service')
+
+            self.current_state = 'prompt'
+            self.create_message_box(f"{self.ai_states[self.current_state]}", 'service')
+            return
+
+        if self.current_state == 'prompt':
+            if "yes" in message.lower():
+                self.current_state = 'accepted'
+                # self.create_message_box(f"Service: {self.ai_states[self.current_state]}", 'service')
+            elif "no" in message.lower():
+                self.current_state = 'declined'
+
+                self.create_message_box(f"{(self.ai_states[self.current_state])}", 'service')
+                self.disable_chat()
+
+                if self.upload_frame:
+                    data.images = self.upload_frame.images
+            else:
+                self.create_message_box(f"{self.ai_states['confused']}", 'service')
+
+        if self.current_state == 'images' and not self.upload_frame:
+            self.create_message_box(f"{self.ai_states[self.current_state]}", 'service')
+            self.upload_frame = UploadFrame(self.chat_frame)
+            self.upload_frame.cancel.configure(command=self.ignore_upload)
+            self.upload_frame.pack()
 
     def create_message_box(self, message, type):
         if type == self.services[0]:
-            chat = MessageBox(self.chat_frame, message=message)
+            chat = MessageBox(self.chat_frame, message=message, name="Service")
             chat.pack()
         elif type == self.services[1]:
-            chat = MessageBox(self.chat_frame, message=message, fg='white')
-            chat.message_text.configure(text_color='#cecaca')
+            print(data.patient)
+            chat = MessageBox(self.chat_frame, message=message, fg='white', name="John Doe")
             chat.pack()
         elif type == self.services[2]:
+            pass
 
             # chat.pack(side='top', fill='x', padx=10, pady=60)
             # chat.grid(row=self.cur_row, column=1, sticky='nsew', padx=600)
@@ -820,7 +1004,7 @@ class PATIENT_DASHBOARD(DASHBOARD):
             # self.frames[key].grid(row=0, column=0, sticky='nsew')
             # self.frames[key].pack(side="top", fill="both", expand=True)
 
-        self.show_frame("request_app")
+        self.show_frame("symptoms")
 
     def show_frame(self, cont: str):
         frame = self.frames[cont]
