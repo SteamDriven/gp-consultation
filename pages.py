@@ -10,74 +10,10 @@ from PIL import Image
 import calendar
 from datetime import datetime
 
+from methods import ServerCommands, ClientCommands, appt_data
+from configs import Commands, UserTypes
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-
-class appointmentData:
-    def __init__(self):
-        self._selected_time = None
-        self._selected_day = None
-        self._patient = None
-        self._doctor = None
-        self._symptoms = []
-        self._images = []
-
-    @property
-    def time(self):
-        return self._selected_time
-
-    @property
-    def doctor(self):
-        return self._doctor
-
-    @property
-    def images(self):
-        return self._images
-
-    @property
-    def day(self):
-        return self._selected_day
-
-    @property
-    def patient(self):
-        return self._patient
-
-    @property
-    def symptoms(self):
-        return self._symptoms
-
-    @symptoms.setter
-    def symptoms(self, newSymptoms):
-        self._symptoms = newSymptoms
-        logging.info(f"Appointment data > SYMPTOMS: {self._symptoms}")
-
-    @time.setter
-    def time(self, newTime):
-        self._selected_time = newTime
-        logging.info(f"Appointment data > TIME: {self._selected_time}")
-
-    @images.setter
-    def images(self, newImage):
-        self._images = newImage
-        logging.info(f"Appointment data > IMAGE: {self._images}")
-
-    @doctor.setter
-    def doctor(self, newDoctor):
-        self._doctor = newDoctor
-        logging.info(f"Appointment data > DOCTOR: {self._doctor}")
-
-    @day.setter
-    def day(self, newDay):
-        self._selected_day = newDay
-        logging.info(f"Appointment data > DAY: {self._selected_day}")
-
-    @patient.setter
-    def patient(self, newPatient):
-        self._patient = newPatient
-        logging.info(f"Appointment data > PATIENT: {self._patient}")
-
-
-data = appointmentData()
 
 
 class Label(ctk.CTkFrame):
@@ -281,67 +217,59 @@ class Chat(ctk.CTkFrame):
     DEFAULT_CHAT_BG = '#f2f2f2'
 
     services = ['service', 'client', 'image', 'other']
-    # ai_conversation_states = ['greeting_prompt',
-    #                           'images_prompt',
-    #                           'gp_prompt',
-    #                           'gp_declined_prompt',
-    #                           'gp_accepted_prompt',
-    #                           'gp_completed_prompt'
-    #                           ]
 
-    ai_states = {
-        'greeting': (f"Hello, {data.patient}!. "
-                     "Please describe your symptoms in detail. \n"
-                     "Include information such as when they started, "
-                     "their intensity, \nand any other relevant information."),
+    def __init__(self, master=None, title='AI Chat', client=None, **kwargs):
+        super().__init__(master, **kwargs)
 
-        'images': (f"Fantastic, thank you {data.patient}. "
-                   "I'll be sure to note those down for you.\n"
-                   "If possible, can you please attach any relevant images of affected areas\nor symptoms you're "
-                   "having and if not, don't you worry about it."),
+        self.title = title
+        self.ai_states = {
+            'greeting': (f"Hello, {appt_data.user}!. "
+                         "Please describe your symptoms in detail. \n"
+                         "Include information such as when they started, "
+                         "their intensity, \nand any other relevant information."),
 
-        'no-images': ("I see you've decided not to include any images.\n"
-                      "That's no problem, you will be able to attach images to your profile later."),
+            'images': (f"Fantastic, thank you {appt_data.user}. "
+                       "I'll be sure to note those down for you.\n"
+                       "If possible, can you please attach any relevant images of affected areas\nor symptoms you're "
+                       "having and if not, don't you worry about it."),
 
-        'yes-images': ("Thank you for submitting your images.\n"
-                       "This will help aid your GP in diagnosis."),
+            'no-images': ("I see you've decided not to include any images.\n"
+                          "That's no problem, you will be able to attach images to your profile later."),
 
-        "prompt": ("Would you like to choose a specific GP from our\n"
-                   "provided list of available clinicians?"),
+            'yes-images': ("Thank you for submitting your images.\n"
+                           "This will help aid your GP in diagnosis."),
 
-        "declined": (f"Great thank you {data.patient}, I really appreciate that. "
-                     "Your request will be sent to an available clinician whom will be assigned\n"
-                     "to you shortly. All your details provided today will be provided too. Be sure"
-                     "to look out on your 'Notifications' tab for request acceptance.\n\nHave a nice day!."),
+            "prompt": ("Would you like to choose a specific GP from our\n"
+                       "provided list of available clinicians?"),
 
-        'confused': f"I apologise {data.patient}, I didn't get that. Could you please message again?",
+            "declined": (f"Great thank you {appt_data.user}, I really appreciate that. "
+                         "Your request will be sent to an available clinician whom will be assigned\n"
+                         "to you shortly. All your details provided today will be provided too. Be sure"
+                         "to look out on your 'Notifications' tab for request acceptance.\n\nHave a nice day!."),
 
-        "accepted": "Please select one of the available GPs listed below:",
+            'confused': f"I apologise {appt_data.user}, I didn't get that. Could you please message again?",
 
-        "completed": f"""Great, thank you {data.patient}. Your request has been sent to DR {data.doctor},
+            "accepted": "Please select one of the available GPs listed below:",
+
+            "completed": f"""Great, thank you {appt_data.user}. Your request has been sent to DR {appt_data.doctor},
                             along with all your submitted details today. You'll be notified on your dash when your 
                             request has been accepted. Be sure to keep a look out on your NOTIFICATIONS tab. 
                             
                             Have a nice day!"""
-    }
-
-    def __init__(self, master=None, title='AI Chat', **kwargs):
-        super().__init__(master, **kwargs)
-
-        self.title = title
-
+        }
         self.container = None
+        self.client = client
         self.label = None
         self.chat_frame = None
         self.chat_box = None
         self.upload_frame = None
+        self.state = 'client'
         self.user_responses = {}
         self.current_state = "greeting"
         self.cur_row = 0
 
-        self.setup_chat()
-        self.create_chat()
-        self.create_message_box(f"Service: {self.ai_states[self.current_state]}", 'service')
+        # self.setup_chat()
+        # self.create_chat()
 
     def setup_chat(self):
         self.container = ctk.CTkFrame(self, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
@@ -367,62 +295,72 @@ class Chat(ctk.CTkFrame):
 
         self.create_message_box(f"{self.ai_states[self.current_state]}", 'service')
 
-    def handle_user_response(self):
+    def get_message(self):
         message = self.chat_box.txt.get_message()
-        logging.info(f"User response: {message}")
-        logging.info(f"User chat state: {self.current_state}")
+        return message
 
-        if not message:
-            self.create_message_box(f"{self.ai_states['confused']}", 'service')
-            return
+    def handle_user_response(self):
+        message = self.get_message()
+        if self.state == 'client':
+            logging.info('Chat is in a client state. Connecting two clients.')
+            ClientCommands.handle_chat(self.client, message, Commands.chat_commands['broadcast'])
 
-        if self.current_state == 'greeting':
-            data.symptoms = message
-            self.current_state = 'images'
+        elif self.state == 'ai':
+            logging.info('Chat set to AI state, only one client connected.')
 
-        self.create_message_box(f"{message}", 'client')
+            logging.info(f"User response: {message}")
+            logging.info(f"User chat state: {self.current_state}")
 
-        if self.current_state == 'images' and self.upload_frame is not None:
-            logging.info("User has already received an offer to upload symptoms.")
-
-            uploaded_images = self.upload_frame.get_children()
-            if not uploaded_images:
-                self.create_message_box(f"{self.ai_states['no-images']}", 'service')
-
-            else:
-                self.create_message_box(f"{self.ai_states['yes-images']}", 'service')
-
-            self.current_state = 'prompt'
-            self.create_message_box(f"{self.ai_states[self.current_state]}", 'service')
-            return
-
-        if self.current_state == 'prompt':
-            if "yes" in message.lower():
-                self.current_state = 'accepted'
-                # self.create_message_box(f"Service: {self.ai_states[self.current_state]}", 'service')
-            elif "no" in message.lower():
-                self.current_state = 'declined'
-
-                self.create_message_box(f"{(self.ai_states[self.current_state])}", 'service')
-                self.disable_chat()
-
-                if self.upload_frame:
-                    data.images = self.upload_frame.images
-            else:
+            if not message:
                 self.create_message_box(f"{self.ai_states['confused']}", 'service')
+                return
 
-        if self.current_state == 'images' and not self.upload_frame:
-            self.create_message_box(f"{self.ai_states[self.current_state]}", 'service')
-            self.upload_frame = UploadFrame(self.chat_frame)
-            self.upload_frame.cancel.configure(command=self.ignore_upload)
-            self.upload_frame.pack()
+            if self.current_state == 'greeting':
+                appt_data.symptoms = message
+                self.current_state = 'images'
+
+            self.create_message_box(f"{message}", 'client')
+
+            if self.current_state == 'images' and self.upload_frame is not None:
+                logging.info("User has already received an offer to upload symptoms.")
+
+                uploaded_images = self.upload_frame.get_children()
+                if not uploaded_images:
+                    self.create_message_box(f"{self.ai_states['no-images']}", 'service')
+
+                else:
+                    self.create_message_box(f"{self.ai_states['yes-images']}", 'service')
+
+                self.current_state = 'prompt'
+                self.create_message_box(f"{self.ai_states[self.current_state]}", 'service')
+                return
+
+            if self.current_state == 'prompt':
+                if "yes" in message.lower():
+                    self.current_state = 'accepted'
+                    # self.create_message_box(f"Service: {self.ai_states[self.current_state]}", 'service')
+                elif "no" in message.lower():
+                    self.current_state = 'declined'
+
+                    self.create_message_box(f"{(self.ai_states[self.current_state])}", 'service')
+                    self.disable_chat()
+
+                    if self.upload_frame:
+                        appt_data.images = self.upload_frame.images
+                else:
+                    self.create_message_box(f"{self.ai_states['confused']}", 'service')
+
+            if self.current_state == 'images' and not self.upload_frame:
+                self.create_message_box(f"{self.ai_states[self.current_state]}", 'service')
+                self.upload_frame = UploadFrame(self.chat_frame)
+                self.upload_frame.cancel.configure(command=self.ignore_upload)
+                self.upload_frame.pack()
 
     def create_message_box(self, message, type):
         if type == self.services[0]:
             chat = MessageBox(self.chat_frame, message=message, name="Service")
             chat.pack()
         elif type == self.services[1]:
-            print(data.patient)
             chat = MessageBox(self.chat_frame, message=message, fg='white', name="John Doe")
             chat.pack()
         elif type == self.services[2]:
@@ -460,8 +398,8 @@ class ENTRY(ctk.CTkFrame):
                                   font=('Calibri Light', 25))
         self.label.grid(row=0, column=0, pady=5, padx=5, sticky='w')
 
-        self.entry = ctk.CTkEntry(self, show=self.show_bullet, width=min_width, font=font, border_width=0,
-                                  corner_radius=10)
+        self.entry = ctk.CTkEntry(self, show=self.show_bullet, width=min_width, font=font, border_width=1,
+                                  corner_radius=10, fg_color='white', text_color='black', border_color='black')
         self.entry.grid(row=1, column=0, columnspan=2, padx=5, pady=5, ipady=20)
 
     def get_entry(self):
@@ -926,7 +864,7 @@ class DASHBOARD(ctk.CTkFrame):
 
         self.title_bar = ctk.CTkFrame(self, fg_color='#4c6fbf', corner_radius=0, height=90)
         self.logo_image = ctk.CTkLabel(self.title_bar, image=logo_image_ck, text='')
-        self.user_lbl = ctk.CTkLabel(self.title_bar, text=self.user_type, text_color='white',
+        self.user_lbl = ctk.CTkLabel(self.title_bar, text='Loading', text_color='white',
                                      font=self.helvetica_bold)
         self.menu_bar = ctk.CTkFrame(self, fg_color='#3c5691', corner_radius=0, width=300)
         self.dash_frame = ctk.CTkFrame(self.menu_bar, fg_color='#2a3e6a', corner_radius=0, height=75)
@@ -960,10 +898,12 @@ class PATIENT_DASHBOARD(DASHBOARD):
 
         print(f"{self.__class__.__name__} successfully initialised.")
 
-        self.user_type = "Patient"
+        self.client = controller.client
+        self.frames = {}
         self.pages_list = {
             "request_app": REQUEST_APPOINTMENTS,
             "symptoms": SYMPTOMS,
+            "chat_room": chatRoom,
         }
 
         self.buttons = {
@@ -990,25 +930,26 @@ class PATIENT_DASHBOARD(DASHBOARD):
             'Chat': {
                 "path": 'Images/Chat.PNG',
                 "size": (67, 52),
-                "command": None
+                "command": lambda: self.show_frame('chat_room')
             },
         }
 
-        self.create_widgets()
-        self.configure_menu()
-        self.place_widgets()
+        # self.create_widgets()
+        # self.configure_menu()
+        # self.place_widgets()
 
-        self.frames = {}
+    def create_pages(self):
         for key, value in self.pages_list.items():
             self.frames[key] = value(self.main_frame, self)
             # self.frames[key].grid(row=0, column=0, sticky='nsew')
             # self.frames[key].pack(side="top", fill="both", expand=True)
 
-        self.show_frame("symptoms")
-
     def show_frame(self, cont: str):
         frame = self.frames[cont]
         print('Displaying frame:', cont)
+
+        if cont == 'chat_room':
+            ClientCommands.handle_chat(self.client, appt_data.user, Commands.chat_commands['announcement'])
 
         try:
             for f in self.frames.values():
@@ -1047,7 +988,7 @@ class REQUEST_APPOINTMENTS(ctk.CTkFrame):
         self.available_times = ['Morning', 'Early Afternoon', 'Late Afternoon', 'Evening']
         self.selected_time = None
         self.buttons = []
-        self.control: PATIENT_DASHBOARD = controller
+        self.control = controller
         self.title = None
         self.date_entry = None
         self.time_frame = None
@@ -1086,8 +1027,8 @@ class REQUEST_APPOINTMENTS(ctk.CTkFrame):
         return print(f"Selected time has been updated to: {self.selected_time}")
 
     def update_time(self):
-        data.day = self.date_entry.selected_button
-        data.time = self.selected_time
+        appt_data.day = self.date_entry.selected_button
+        appt_data.time = self.selected_time
         # self.control.appointment_data.update_times(self.selected_time, self.date_entry.selected_button)
         self.control.show_frame("symptoms")
 
@@ -1132,13 +1073,41 @@ class SYMPTOMS(ctk.CTkFrame):
         self.title = ctk.CTkLabel(self, text='Discuss your symptoms', text_color='Black',
                                   font=('Arial Bold', 30))
         self.ai_chat = Chat(self)
+        self.ai_chat.state = 'ai'
         self.cancel_button = ctk.CTkButton(self, text='Cancel Request', text_color='white', font=('Arial Bold', 20),
                                            fg_color='#b1c9eb', corner_radius=5)
 
     def place(self):
         self.title.pack(pady=(80, 5), padx=30, anchor=W)
+        self.ai_chat.setup_chat()
+        self.ai_chat.create_chat()
         self.ai_chat.pack(fill='both', expand=True, padx=30, pady=(20, 0))
         self.cancel_button.pack(side='right', padx=30, pady=(20, 120), ipadx=30, ipady=5)
+
+
+class chatRoom(ctk.CTkFrame):
+    def __init__(self, parent, controller, client=None):
+        ctk.CTkFrame.__init__(self, parent)
+
+        self.configure(fg_color='white')
+        self.title = None
+        self.controller = controller
+        self.room = None
+
+        self.create()
+        self.place()
+
+    def create(self):
+        self.title = ctk.CTkLabel(self, text='Your chat room', text_color='Black',
+                                  font=('Arial Bold', 30))
+        self.room = Chat(self, 'Chat', self.controller.client)
+
+    def place(self):
+        self.title.pack(pady=(80, 5), padx=30, anchor=W)
+
+        self.room.setup_chat()
+        self.room.create_chat()
+        self.room.pack(fill='both', expand=True, padx=30, pady=20)
 
 
 class DOCTOR_DASHBOARD(DASHBOARD):

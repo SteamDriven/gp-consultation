@@ -4,6 +4,7 @@ import threading
 import string
 import random
 from database import Database, tables
+from configs import UserTypes, Commands
 import hashlib
 import logging
 
@@ -41,6 +42,7 @@ class Server:
         self.client_connected = None
         self.client_address = None
         self.message = {"COMMAND": "", "CLIENT": "", "DATA": ""}
+        self.connected_users = []
         self.query = ""
         self.query_data = []
 
@@ -113,74 +115,80 @@ class Server:
         users = {-1: None, 1: self.USER_ROLE_PATIENT, 2: self.USER_ROLE_PATIENT}
 
         while True:
-            data = client.recv(2048)
-            if not data:
-                continue
-            else:
-                message = json.loads(data.decode())
+            try:
+                data = client.recv(2048)
+                if not data:
+                    break
+                else:
+                    message = json.loads(data.decode())
 
-                if message['COMMAND'] == self.COMMAND_AI:
-                    logging.info('>: Client requested a chat with AI.')
-                    self.handle_ai_chat()
+                    if message['COMMAND'] == Commands.chat_commands['announcement']:
+                        logging.info(f">: {message['DATA']} has joined the chat.")
 
-                if message['COMMAND'] == self.COMMAND_REGISTER:
-                    logging.info(">: Client requested to be registered to the database.")
+                    if message['COMMAND'] == Commands.chat_commands['broadcast']:
+                        print(message)
+                        logging.info(f">: Client has requested to say: {message['DATA']}")
+                        self.connected_users.append(client)
 
-                    if self.register_user(message["DATA"], message['CLIENT']):
-                        self.message["COMMAND"] = self.COMMAND_COMPLETED
+                    if message['COMMAND'] == self.COMMAND_REGISTER:
+                        logging.info(">: Client requested to be registered to the database.")
 
-                        client.send(json.dumps(self.message).encode())
+                        if self.register_user(message["DATA"], message['CLIENT']):
+                            self.message["COMMAND"] = self.COMMAND_COMPLETED
 
-                if message['COMMAND'] == self.COMMAND_REFERRAL:
-                    logging.info(">: Client requested a referral code from server.")
-                    code = self.generate_code(6)
+                            client.send(json.dumps(self.message).encode())
 
-                    self.message["COMMAND"] = self.COMMAND_REFERRAL
-                    self.message["CLIENT"] = self.USER_ROLE_CLINICIAN
-                    self.message["DATA"] = code
+                    if message['COMMAND'] == self.COMMAND_REFERRAL:
+                        logging.info(">: Client requested a referral code from server.")
+                        code = self.generate_code(6)
 
-                    client.send(json.dumps(self.message).encode())
-
-                if message['COMMAND'] == self.COMMAND_VALIDATE_REGISTER:
-                    found_results = self.database.check_records(message)
-                    logging.debug(found_results)
-
-                    if found_results:
-                        self.message['COMMAND'] = self.COMMAND_FAILED
-                        logging.debug(self.message)
-                        client.send(json.dumps(self.message).encode())
-
-                    elif not found_results:
-                        self.message['COMMAND'] = self.COMMAND_PASSED
-                        logging.debug(self.message)
+                        self.message["COMMAND"] = self.COMMAND_REFERRAL
+                        self.message["CLIENT"] = self.USER_ROLE_CLINICIAN
+                        self.message["DATA"] = code
 
                         client.send(json.dumps(self.message).encode())
 
-                if message['COMMAND'] == self.COMMAND_LOGIN:
-                    logging.info(">: Server received request to validate login credentials.")
-                    accept_login = self.compare_login(message)
-                    logging.debug(users[accept_login[0]])
+                    if message['COMMAND'] == self.COMMAND_VALIDATE_REGISTER:
+                        found_results = self.database.check_records(message)
+                        logging.debug(found_results)
 
-                    if users[accept_login[0]] is not None:
-                        logging.info(f">: User is a {users[accept_login[0]]}")
+                        if found_results:
+                            self.message['COMMAND'] = self.COMMAND_FAILED
+                            logging.debug(self.message)
+                            client.send(json.dumps(self.message).encode())
 
-                        self.message['COMMAND'] = self.COMMAND_ACCEPT
-                        self.message['CLIENT'] = users[accept_login[0]]
-                        self.message['DATA'] = accept_login[1]
+                        elif not found_results:
+                            self.message['COMMAND'] = self.COMMAND_PASSED
+                            logging.debug(self.message)
 
-                        logging.debug(self.message)
-                        client.send(json.dumps(self.message).encode())
-                    else:
+                            client.send(json.dumps(self.message).encode())
 
-                        self.message['COMMAND'] = self.COMMAND_DENY
-                        self.message['CLIENT'] = users[accept_login[0]]
-                        self.message['DATA'] = None
+                    if message['COMMAND'] == self.COMMAND_LOGIN:
+                        logging.info(">: Server received request to validate login credentials.")
+                        accept_login = self.compare_login(message)
+                        logging.debug(users[accept_login[0]])
 
-                        logging.debug(self.message)
-                        client.send(json.dumps(self.message).encode())
+                        if users[accept_login[0]] is not None:
+                            logging.info(f">: User is a {users[accept_login[0]]}")
 
-    def handle_ai_chat(self):
-        pass
+                            self.message['COMMAND'] = self.COMMAND_ACCEPT
+                            self.message['CLIENT'] = users[accept_login[0]]
+                            self.message['DATA'] = accept_login[1]
+
+                            logging.debug(self.message)
+                            client.send(json.dumps(self.message).encode())
+                        else:
+
+                            self.message['COMMAND'] = self.COMMAND_DENY
+                            self.message['CLIENT'] = users[accept_login[0]]
+                            self.message['DATA'] = None
+
+                            logging.debug(self.message)
+                            client.send(json.dumps(self.message).encode())
+
+            except socket.error as e:
+                logging.error(f"Error while receiving data from client: {e}")
+                break
 
     def setup_server(self):
         """

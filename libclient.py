@@ -3,6 +3,8 @@ import json
 from time import sleep
 import logging
 
+from configs import Commands, UserTypes
+
 
 class Client:
     COMMAND_REFERRAL = 'REFERRAL'
@@ -12,9 +14,6 @@ class Client:
     COMMAND_FAILED = 'FAILED'
     COMMAND_ACCEPT = 'ACCEPT'
     COMMAND_DENY = 'DENY'
-
-    USER_ROLE_CLINICIAN = 'CLINICIAN'
-    USER_ROLE_PATIENT = 'PATIENT'
 
     def __init__(self, host, port):
         self.host = host
@@ -34,9 +33,19 @@ class Client:
             self.client_socket.close()
             logging.info(f">: Connection to socket on HOST {self.host} has been closed!")
 
+    def send_chat_message(self, message, command):
+        print(f"Received {message} followed by command: {command}")
+        if command == Commands.chat_commands['broadcast']:
+            print(f"{command} being put into action.")
+            self.send_message(Commands.chat_commands['broadcast'], None, message)
+
+        elif command == Commands.chat_commands['announcement']:
+            print(f"{command} being put into action.")
+            self.send_message(Commands.chat_commands['announcement'], None, message)
+
     def send_message(self, command, client, data):
         message = {"COMMAND": command, "CLIENT": client, "DATA": data}
-        logging.debug(message)
+        print(message)
         self.client_socket.send(json.dumps(message).encode())
 
     def receive_message(self):
@@ -58,6 +67,9 @@ class Client:
         if received["COMMAND"] == self.COMMAND_REFERRAL:
             return received["DATA"]
 
+        if received['COMMAND'] == Commands.chat_commands['announcement']:
+            logging.info('Client has requested server to announce message.')
+
         if received["COMMAND"] == self.COMMAND_END:
             self.handle_close()
 
@@ -73,11 +85,11 @@ class Client:
         if received['COMMAND'] == self.COMMAND_ACCEPT:
             logging.info('>: Login was accepted.')
 
-            if received['CLIENT'] == self.USER_ROLE_PATIENT:
+            if received['CLIENT'] == UserTypes.PATIENT:
                 logging.info('Changing to patient dash.')
                 return ['CHANGE TO PATIENT DASH', received['DATA']]
 
-            if received['CLIENT'] == self.USER_ROLE_CLINICIAN:
+            if received['CLIENT'] == UserTypes.CLINICIAN:
                 logging.info('Changing to clinician dash.')
                 return ['CHANGE TO CLINICIAN DASH', received['DATA']]
 

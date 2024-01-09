@@ -7,89 +7,11 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from libclient import Client
-from pages import LOGIN, PATIENT_DASHBOARD, data
+from pages import LOGIN, PATIENT_DASHBOARD
+from methods import ServerCommands, ClientCommands, Validator, appt_data
+from configs import UserTypes, Commands
 
 port = 50000
-
-
-class Commands:
-    REGISTER = 'REGISTER'
-    LOGIN = 'LOGIN'
-    REFERRAL = 'REFERRAL'
-    VALIDATE_REGISTER = 'VALIDATE REGISTER'
-
-
-class UserTypes:
-    CLINICIAN = 'CLINICIAN'
-    PATIENT = 'PATIENT'
-
-
-class ServerCommands:
-    @staticmethod
-    def get_referral(client):
-        return client.handle_server_messages(Commands.REFERRAL, None, None)
-
-    @staticmethod
-    def validate_register(user_type, data, client):
-        return client.handle_server_messages(Commands.VALIDATE_REGISTER, user_type, data)
-
-
-class ClientCommands:
-    @staticmethod
-    def register(client, user_type, user_data):
-        return client.handle_server_messages(Commands.REGISTER, user_type, user_data)
-
-    @staticmethod
-    def login(client, user_data):
-        return client.handle_server_messages(Commands.LOGIN, None, user_data)
-
-
-class Validator:
-    @staticmethod
-    def validate_email(email):
-        """
-        Validate an email address using a regular expression.
-        """
-        pattern = r"\"?([-a-zA-Z0-9.`?{}]+@\w+\.\w+)\"?"
-        return bool(re.match(pattern, email))
-
-    @staticmethod
-    def validate_password(password, confirm):
-        """
-        Compare two passwords to ensure they match.
-        """
-        return password == confirm
-
-    @staticmethod
-    def validate_name(name):
-        """
-        Validate a name based on various criteria.
-        """
-        if not isinstance(name, str) or len(name) < 2 or name.isnumeric() or not re.match('^[A-Z0-9._]*$', name):
-            return False
-        return True
-
-    @staticmethod
-    def validate_tel_no(no):
-        """
-        Validate a telephone number based on its length.
-        """
-        return len(no) == 11
-
-    @staticmethod
-    def validate_postcode(code):
-        """
-        Validate a postcode based on its length.
-        """
-        pattern = r"^[A-Z]{1,2}([0-9]{1,2}[" "][0-9][A-Z]{2}$"
-        return bool(re.match(pattern, code))
-
-    @staticmethod
-    def validate_referral(user_input, referral):
-        """
-        Compare the user's input with the server's generated referral code.
-        """
-        return user_input == referral
 
 
 class APP(ctk.CTk):
@@ -106,6 +28,11 @@ class APP(ctk.CTk):
         self.server_commands = ServerCommands()
         self.client_commands = ClientCommands()
 
+        self.pages_list = {
+            "login": LOGIN,
+            "patient_dash": PATIENT_DASHBOARD,
+        }
+
         # self.create_random_doctor()
         # self.create_random_patient()
 
@@ -115,32 +42,45 @@ class APP(ctk.CTk):
 
         # Functions
         self.frames = {}
-        pages = [LOGIN, PATIENT_DASHBOARD]
-        for F in pages:
-            frame = F(container, self)
+        for key, value in self.pages_list.items():
+            self.frames[key] = value(container, self)
 
-            self.frames[F] = frame
+        # Using the method mentioned later in the class to display a specific frame upon opening
+        self.show_frame('login')
 
-    # Using the method mentioned later in the class to display a specific frame upon opening
-        self.show_frame(PATIENT_DASHBOARD)
     #
     # Display current frame using page as a parameter
 
-    def show_frame(self, cont):
+    def show_frame(self, cont: str):
         frame = self.frames[cont]
-        frame.tkraise()
-        frame.pack(side="left", fill="both", expand=True)
+        print('Displaying frame:', cont)
+
+        try:
+            for f in self.frames.values():
+                f.pack_forget()
+
+            frame.pack(side="top", fill="both", expand=True)
+            frame.tkraise()
+
+        except Exception as e:
+            print(f"Error in show_frame: {e}")
 
         # Initialise
         self.mainloop()
 
-    def handle_successful_login(self, user_type, dashboard_frame):
+    def handle_successful_login(self, user_type, dashboard_frame, user):
         logging.info(f">: {user_type} successfully logged in, switching to {user_type} Dashboard")
         messagebox.showinfo('Login', "Login was successful!")
 
-        dashboard = dashboard_frame
-        dashboard.user_type = user_type
-        self.show_frame(dashboard)
+        self.frames[dashboard_frame].create_widgets()
+        self.frames[dashboard_frame].configure_menu()
+        self.frames[dashboard_frame].place_widgets()
+        self.frames[dashboard_frame].create_pages()
+        self.frames[dashboard_frame].user_lbl.configure(text=user)
+        self.frames[dashboard_frame].show_frame('request_app')
+        self.show_frame(dashboard_frame)
+
+        appt_data.user = user
 
     @staticmethod
     def handle_failed_login():
@@ -157,15 +97,14 @@ class APP(ctk.CTk):
         action = accepted[0]
 
         if action == 'CHANGE TO PATIENT DASH':
-            self.handle_successful_login(UserTypes.PATIENT, PATIENT_DASHBOARD)
+            print(accepted)
+            self.handle_successful_login(UserTypes.PATIENT, 'patient_dash', accepted[1])
 
         elif action == 'CHANGE TO CLINICIAN DASH':
             self.handle_successful_login(UserTypes.CLINICIAN, None)
 
         elif action == 'SHOW LOGIN WARNING':
             self.handle_failed_login()
-
-        data.patient = accepted[1]
 
     @staticmethod
     def generate_user_data(user_type, server_commands):
