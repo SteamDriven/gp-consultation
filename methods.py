@@ -6,40 +6,6 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-class ServerCommands:
-    @staticmethod
-    def get_referral(client):
-        return client.handle_server_messages(Commands.REFERRAL, None, None)
-
-    @staticmethod
-    def validate_register(user_type, data, client):
-        return client.handle_server_messages(Commands.VALIDATE_REGISTER, user_type, data)
-
-
-class ClientCommands:
-    @staticmethod
-    def register(client, user_type, user_data):
-        return client.handle_server_messages(Commands.REGISTER, user_type, user_data)
-
-    @staticmethod
-    def login(client, user_data):
-        return client.handle_server_messages(Commands.LOGIN, None, user_data)
-
-    @staticmethod
-    def handle_chat(client, message, command):
-        print(f">: Sending {message} with command: {command}")
-        return client.send_chat_message(message, command)
-
-    @staticmethod
-    def handle_failed_login():
-        logging.info(">: Client has requested to login. Server has denied access.")
-        messagebox.showwarning('Login Error', "Login credentials do not exist!")
-    @staticmethod
-    def handle_successful_login(user_type):
-        logging.info(f">: {user_type} successfully logged in, switching to {user_type} Dashboard")
-        messagebox.showinfo('Login', "Login was successful!")
-
-
 class appointmentData:
     def __init__(self):
         self._selected_time = None

@@ -1,11 +1,11 @@
+from database import Database, tables
+from configs import UserTypes, Commands
+
 import socket
 import json
 import threading
 import string
 import random
-from database import Database, tables
-from configs import UserTypes, Commands
-import hashlib
 import logging
 
 
@@ -42,7 +42,8 @@ class Server:
         self.client_connected = None
         self.client_address = None
         self.message = {"COMMAND": "", "CLIENT": "", "DATA": ""}
-        self.connected_users = []
+        self.connected_users = {}
+        self.appointments = {}
         self.query = ""
         self.query_data = []
 
@@ -109,16 +110,17 @@ class Server:
 
             Args: client (socket.socket): Client socket object.
         """
-
         self.message = {'COMMAND': None, 'CLIENT': None, 'DATA': []}
 
-        users = {-1: None, 1: self.USER_ROLE_PATIENT, 2: self.USER_ROLE_PATIENT}
+        users = {-1: None, 1: UserTypes.PATIENT, 2: UserTypes.CLINICIAN}
 
         while True:
             try:
                 data = client.recv(2048)
+
                 if not data:
                     break
+
                 else:
                     message = json.loads(data.decode())
 
@@ -126,9 +128,20 @@ class Server:
                         logging.info(f">: {message['DATA']} has joined the chat.")
 
                     if message['COMMAND'] == Commands.chat_commands['broadcast']:
-                        print(message)
-                        logging.info(f">: Client has requested to say: {message['DATA']}")
-                        self.connected_users.append(client)
+                        logging.info(f">: User {message['CLIENT']} has said: {message['DATA']}")
+
+                        for key, user_socket in self.connected_users.items():
+                            if user_socket == self.connected_users[message['CLIENT']]:
+                                logging.debug(f"Skipping USER {key} cause it's matches Sender id.")
+                                continue
+
+                            logging.debug(f"Sending a message to USER: {key}")
+
+                            user_socket.send(json.dumps({
+                                'COMMAND': Commands.chat_commands['receive'],
+                                'CLIENT': message['CLIENT'],
+                                'DATA': message['DATA']
+                            }).encode())
 
                     if message['COMMAND'] == self.COMMAND_REGISTER:
                         logging.info(">: Client requested to be registered to the database.")
@@ -166,22 +179,27 @@ class Server:
                     if message['COMMAND'] == self.COMMAND_LOGIN:
                         logging.info(">: Server received request to validate login credentials.")
                         accept_login = self.compare_login(message)
+
                         user_type = users[accept_login[0]]
-                        logging.debug(users[accept_login[0]])
+                        user_id = accept_login[1][0]
+                        logging.debug(f"User: {accept_login}")
 
                         if user_type is not None:
                             logging.info(f">: {accept_login[1]} is a {user_type}")
 
                             self.message['COMMAND'] = self.COMMAND_ACCEPT
-                            self.message['CLIENT'] = users[accept_login[0]]
+                            self.message['CLIENT'] = user_id  # Set the client key to the user_id
                             self.message['DATA'] = [user_type, accept_login[1]]
+
+                            self.connected_users[user_id] = client  # Add user that logged in, to the connected users.
+                            logging.info(f"User: {self.connected_users[user_id]} has connected successfully.")
 
                             logging.debug(self.message)
                             client.send(json.dumps(self.message).encode())
 
                         else:
                             self.message['COMMAND'] = self.COMMAND_DENY
-                            self.message['CLIENT'] = users[accept_login[0]]
+                            self.message['CLIENT'] = None
                             self.message['DATA'] = []
 
                             logging.debug(self.message)

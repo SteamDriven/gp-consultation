@@ -6,9 +6,10 @@ class Commands:
 
     chat_commands = {
 
-        'announcement':     'ANNOUNCE',
-        'broadcast':        'BROADCAST',
-        'delete':           'DELETE',
+        'announcement':     'SERVER_ANNOUNCE',
+        'broadcast':        'BROADCAST_MESSAGE',
+        'delete':           'DELETE_MESSAGE',
+        'receive':          'RECEIVE_MESSAGE',
     }
 
 

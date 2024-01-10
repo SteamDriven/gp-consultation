@@ -3,7 +3,6 @@ import logging
 import random
 import hashlib
 
-#  This is a dictionary that contains all the tables along with the attributes and keys for the database.
 tables = {
     "CLINICIAN": '''
 
@@ -191,13 +190,15 @@ class Database:  # Created a class for Database along with necessary attributes
     def check_records(self, data):
         self.sql = " "
         print(f'Database received: {data}')
+        patient_sql = '''SELECT Patient_ID, First_Name, Last_Name FROM PATIENT WHERE EMAIL=? AND Password=?'''
+        doctor_sql = '''SELECT Patient_ID, First_Name, Last_Name FROM CLINICIAN WHERE EMAIL=? AND Password=?'''
 
-        if data['CLIENT'] in {self.USER_ROLE_CLINICIAN, self.USER_ROLE_PATIENT}:
-            role = data['CLIENT']
-            self.sql = f"SELECT Email, Tel_No FROM {role} WHERE Email=? OR Tel_no=?"
-            self.cursor.execute(self.sql, (data['DATA'][3], data['DATA'][4]))
-
-            return bool(self.cursor.fetchone())
+        # if data['CLIENT'] in {self.USER_ROLE_CLINICIAN, self.USER_ROLE_PATIENT}:
+        #     role = data['CLIENT']
+        #     self.sql = f"SELECT Email, Tel_No FROM {role} WHERE Email=? OR Tel_no=?"
+        #     self.cursor.execute(self.sql, (data['DATA'][3], data['DATA'][4]))
+        #
+        #     return bool(self.cursor.fetchone())
 
         if data['CLIENT'] is None:  # This will return a number that will be used to identify the type of user.
             email, password = data["DATA"][0], data["DATA"][1]
@@ -211,10 +212,10 @@ class Database:  # Created a class for Database along with necessary attributes
                     logging.info(f"User is a {role}")
 
                     if role == self.USER_ROLE_PATIENT:
-                        self.sql = '''SELECT First_Name, Last_Name FROM PATIENT WHERE EMAIL=? AND Password=?'''
+                        self.sql = patient_sql
 
                     else:
-                        self.sql = '''SELECT First_Name, Last_Name FROM CLINICIAN WHERE EMAIL=? AND Password=?'''
+                        self.sql = doctor_sql
 
                     self.cursor.execute(self.sql, [email, password])
                     return [1 if role == self.USER_ROLE_PATIENT else 2, self.cursor.fetchone()]

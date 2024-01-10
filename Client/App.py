@@ -1,20 +1,21 @@
 import logging
 import random
-import re
 import string
 from tkinter import messagebox
 
 import customtkinter as ctk
 
+from Client.Pages.Dashboard.Dashboard import PatientDashboard
+from Client.Pages.Login import Login
 from libclient import Client
-from pages import LOGIN, PATIENT_DASHBOARD, DOCTOR_DASHBOARD
-from methods import ServerCommands, ClientCommands, Validator, appointmentData
-from configs import UserTypes, Commands
+from methods import Validator, appointmentData
+from helper import ClientCommands
+from configs import UserTypes
 
 port = 50000
 
 
-class APP(ctk.CTk):
+class App(ctk.CTk):
     def __init__(self, title, size, client):
         ctk.CTk.__init__(self)
 
@@ -26,13 +27,11 @@ class APP(ctk.CTk):
         self.frames = {}
 
         self.validations = Validator()
-        self.server_commands = ServerCommands()
         self.client_commands = ClientCommands()
         self.user_data = appointmentData()
 
         self.pages_list = {
-            "login": LOGIN,
-            # "doctor": DOCTOR_DASHBOARD,
+            "login": Login,
         }
 
         # self.create_random_doctor()
@@ -45,15 +44,13 @@ class APP(ctk.CTk):
         self.create_pages()
 
         # Functions
+
     def create_pages(self):
         for key, value in self.pages_list.items():
             self.frames[key] = value(self.container, self)
 
         # Using the method mentioned later in the class to display a specific frame upon opening
         self.show_frame('login')
-
-    #
-    # Display current frame using page as a parameter
 
     def show_frame(self, cont: str):
         frame = self.frames[cont]
@@ -85,52 +82,26 @@ class APP(ctk.CTk):
         if command == 'CHANGE TO PATIENT DASH':
             ClientCommands.handle_successful_login(UserTypes.PATIENT)
             logging.info(f"Received login data: {info}")
-            self.user_data.user = ' '.join(info[1]).title()
+
+            self.user_data.user = info
 
             try:
                 for f in self.frames.values():
                     f.pack_forget()
 
-                frame = PATIENT_DASHBOARD(self.container, self, self.user_data, self.client)
+                frame = PatientDashboard(self.container, self, self.user_data, self.client)
                 frame.pack(side="top", fill="both", expand=True)
                 frame.tkraise()
 
             except Exception as e:
                 print(f"Error in show_frame: {e}")
 
-        # elif accepted[0] == 'CHANGE TO CLINICIAN DASH':
-        #     ClientCommands.handle_successful_login(UserTypes.CLINICIAN)
-        #     self.user_data.user = accepted[1]
-        #     self.show_frame('doctor')
-
         elif command == 'SHOW LOGIN WARNING':
             ClientCommands.handle_failed_login()
 
-    @staticmethod
-    def generate_user_data(user_type):
-        """
-        Generate user data dynamically based on user type (Doctor or Patient).
-        """
-        title_options = ['Mr', 'Miss', 'Mrs', 'Ms']
-
-        user_data = {
-            'title': random.choice(title_options),
-            'first_name': ''.join(random.choices(string.ascii_uppercase, k=5)),
-            'last_name': ''.join(random.choices(string.ascii_uppercase, k=8)),
-            'email': f'{"".join(random.choices(string.ascii_lowercase, k=8))}@example.com',
-            'tel_no': ''.join(random.choices(string.digits, k=11)),
-            'postcode': ''.join(random.choices(string.ascii_uppercase + string.digits, k=6)),
-            'password': ''.join(random.choices(string.ascii_letters + string.digits, k=10)),
-        }
-
-        if user_type == UserTypes.CLINICIAN:
-            user_data['title'] = 'DR'
-
-        return user_data
-
     def create_random_doctor(self):
         print('Generating fake data')
-        doctor_data = self.generate_user_data(UserTypes.CLINICIAN)
+        doctor_data = ClientCommands.generate_user_data(UserTypes.CLINICIAN)
 
         print("Doctor Data:", doctor_data)
 
@@ -138,7 +109,7 @@ class APP(ctk.CTk):
 
     def create_random_patient(self):
         print('Generating fake data')
-        patient_data = self.generate_user_data(UserTypes.PATIENT)
+        patient_data = ClientCommands.generate_user_data(UserTypes.PATIENT)
 
         print("Patient Data:", patient_data)
 
@@ -146,4 +117,4 @@ class APP(ctk.CTk):
 
 
 app_client = Client('localhost', port)
-my_app = APP('Test_App', (1920, 1080), app_client)
+my_app = App('Test_App', (1920, 1080), app_client)
