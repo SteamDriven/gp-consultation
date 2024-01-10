@@ -85,7 +85,7 @@ class APP(ctk.CTk):
         if command == 'CHANGE TO PATIENT DASH':
             ClientCommands.handle_successful_login(UserTypes.PATIENT)
             logging.info(f"Received login data: {info}")
-            self.user_data.user = f"PATIENT: {' '.join(info[1])}"
+            self.user_data.user = ' '.join(info[1]).title()
 
             try:
                 for f in self.frames.values():

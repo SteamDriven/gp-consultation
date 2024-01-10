@@ -252,7 +252,7 @@ class Chat(ctk.CTkFrame):
 
             "accepted": "Please select one of the available GPs listed below:",
 
-            "completed": f"""Great, thank you {self.user_data.user}. Your request has been sent to DR {"Jane Doe"},
+            "completed": f"""Great, thank you {self.user_data.user}. Your request has been sent to DR JANE DOE, 
                             along with all your submitted details today. You'll be notified on your dash when your 
                             request has been accepted. Be sure to keep a look out on your NOTIFICATIONS tab. 
                             
@@ -362,7 +362,7 @@ class Chat(ctk.CTkFrame):
             chat = MessageBox(self.chat_frame, message=message, name="Service")
             chat.pack()
         elif type == self.services[1]:
-            chat = MessageBox(self.chat_frame, message=message, fg='white', name="John Doe")
+            chat = MessageBox(self.chat_frame, message=message, fg='white', name=self.user_data.user)
             chat.pack()
         elif type == self.services[2]:
             pass
