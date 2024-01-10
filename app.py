@@ -7,8 +7,8 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from libclient import Client
-from pages import LOGIN, PATIENT_DASHBOARD
-from methods import ServerCommands, ClientCommands, Validator, appt_data
+from pages import LOGIN, PATIENT_DASHBOARD, DOCTOR_DASHBOARD
+from methods import ServerCommands, ClientCommands, Validator, appointmentData
 from configs import UserTypes, Commands
 
 port = 50000
@@ -23,27 +23,31 @@ class APP(ctk.CTk):
         self.geometry(f"{size[0]}x{size[1]}")
         self.attributes('-fullscreen', True)
         self.client = client
+        self.frames = {}
 
         self.validations = Validator()
         self.server_commands = ServerCommands()
         self.client_commands = ClientCommands()
+        self.user_data = appointmentData()
 
         self.pages_list = {
             "login": LOGIN,
-            "patient_dash": PATIENT_DASHBOARD,
+            # "doctor": DOCTOR_DASHBOARD,
         }
 
         # self.create_random_doctor()
         # self.create_random_patient()
 
         # Widgets
-        container = ctk.CTkFrame(self)
-        container.pack(expand=True, fill='both')
+        self.container = ctk.CTkFrame(self)
+        self.container.pack(expand=True, fill='both')
+
+        self.create_pages()
 
         # Functions
-        self.frames = {}
+    def create_pages(self):
         for key, value in self.pages_list.items():
-            self.frames[key] = value(container, self)
+            self.frames[key] = value(self.container, self)
 
         # Using the method mentioned later in the class to display a specific frame upon opening
         self.show_frame('login')
@@ -68,25 +72,6 @@ class APP(ctk.CTk):
         # Initialise
         self.mainloop()
 
-    def handle_successful_login(self, user_type, dashboard_frame, user):
-        logging.info(f">: {user_type} successfully logged in, switching to {user_type} Dashboard")
-        messagebox.showinfo('Login', "Login was successful!")
-
-        self.frames[dashboard_frame].create_widgets()
-        self.frames[dashboard_frame].configure_menu()
-        self.frames[dashboard_frame].place_widgets()
-        self.frames[dashboard_frame].create_pages()
-        self.frames[dashboard_frame].user_lbl.configure(text=user)
-        self.frames[dashboard_frame].show_frame('request_app')
-        self.show_frame(dashboard_frame)
-
-        appt_data.user = user
-
-    @staticmethod
-    def handle_failed_login():
-        logging.info(">: Client has requested to login. Server has denied access.")
-        messagebox.showwarning('Login Error', "Login credentials do not exist!")
-
     def validate_login(self, data):
         if '' in data:
             messagebox.showwarning('Error', 'You need to fill in all the boxes.')
@@ -94,20 +79,35 @@ class APP(ctk.CTk):
 
         logging.info(">: Client has requested to login. Sending login data to server.")
         accepted = self.client_commands.login(self.client, data)
-        action = accepted[0]
+        command = accepted[0]
+        info = accepted[1]
 
-        if action == 'CHANGE TO PATIENT DASH':
-            print(accepted)
-            self.handle_successful_login(UserTypes.PATIENT, 'patient_dash', accepted[1])
+        if command == 'CHANGE TO PATIENT DASH':
+            ClientCommands.handle_successful_login(UserTypes.PATIENT)
+            logging.info(f"Received login data: {info}")
+            self.user_data.user = f"PATIENT: {' '.join(info[1])}"
 
-        elif action == 'CHANGE TO CLINICIAN DASH':
-            self.handle_successful_login(UserTypes.CLINICIAN, None)
+            try:
+                for f in self.frames.values():
+                    f.pack_forget()
 
-        elif action == 'SHOW LOGIN WARNING':
-            self.handle_failed_login()
+                frame = PATIENT_DASHBOARD(self.container, self, self.user_data, self.client)
+                frame.pack(side="top", fill="both", expand=True)
+                frame.tkraise()
+
+            except Exception as e:
+                print(f"Error in show_frame: {e}")
+
+        # elif accepted[0] == 'CHANGE TO CLINICIAN DASH':
+        #     ClientCommands.handle_successful_login(UserTypes.CLINICIAN)
+        #     self.user_data.user = accepted[1]
+        #     self.show_frame('doctor')
+
+        elif command == 'SHOW LOGIN WARNING':
+            ClientCommands.handle_failed_login()
 
     @staticmethod
-    def generate_user_data(user_type, server_commands):
+    def generate_user_data(user_type):
         """
         Generate user data dynamically based on user type (Doctor or Patient).
         """
@@ -130,7 +130,7 @@ class APP(ctk.CTk):
 
     def create_random_doctor(self):
         print('Generating fake data')
-        doctor_data = self.generate_user_data(UserTypes.CLINICIAN, Commands.REGISTER)
+        doctor_data = self.generate_user_data(UserTypes.CLINICIAN)
 
         print("Doctor Data:", doctor_data)
 
@@ -138,7 +138,7 @@ class APP(ctk.CTk):
 
     def create_random_patient(self):
         print('Generating fake data')
-        patient_data = self.generate_user_data(UserTypes.PATIENT, Commands.REGISTER)
+        patient_data = self.generate_user_data(UserTypes.PATIENT)
 
         print("Patient Data:", patient_data)
 

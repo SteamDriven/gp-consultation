@@ -1,4 +1,5 @@
 from configs import Commands
+from tkinter import messagebox
 import re
 import logging
 
@@ -29,12 +30,21 @@ class ClientCommands:
         print(f">: Sending {message} with command: {command}")
         return client.send_chat_message(message, command)
 
+    @staticmethod
+    def handle_failed_login():
+        logging.info(">: Client has requested to login. Server has denied access.")
+        messagebox.showwarning('Login Error', "Login credentials do not exist!")
+    @staticmethod
+    def handle_successful_login(user_type):
+        logging.info(f">: {user_type} successfully logged in, switching to {user_type} Dashboard")
+        messagebox.showinfo('Login', "Login was successful!")
+
 
 class appointmentData:
     def __init__(self):
         self._selected_time = None
         self._selected_day = None
-        self._currentUser = []
+        self._currentUser = None
         self._assignedDoctor = None
         self._assignedPatients = None
         self._symptoms = []
@@ -141,6 +151,3 @@ class Validator:
         Compare the user's input with the server's generated referral code.
         """
         return user_input == referral
-
-
-appt_data = appointmentData()

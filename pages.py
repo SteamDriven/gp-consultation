@@ -10,8 +10,8 @@ from PIL import Image
 import calendar
 from datetime import datetime
 
-from methods import ServerCommands, ClientCommands, appt_data
 from configs import Commands, UserTypes
+from methods import ClientCommands
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -218,17 +218,18 @@ class Chat(ctk.CTkFrame):
 
     services = ['service', 'client', 'image', 'other']
 
-    def __init__(self, master=None, title='AI Chat', client=None, **kwargs):
+    def __init__(self, master=None, title='AI Chat', client=None, user_data=None, **kwargs):
         super().__init__(master, **kwargs)
 
         self.title = title
+        self.user_data = user_data
         self.ai_states = {
-            'greeting': (f"Hello, {appt_data.user}!. "
+            'greeting': (f"Hello, {self.user_data.user}!. "
                          "Please describe your symptoms in detail. \n"
                          "Include information such as when they started, "
                          "their intensity, \nand any other relevant information."),
 
-            'images': (f"Fantastic, thank you {appt_data.user}. "
+            'images': (f"Fantastic, thank you {self.user_data.user}. "
                        "I'll be sure to note those down for you.\n"
                        "If possible, can you please attach any relevant images of affected areas\nor symptoms you're "
                        "having and if not, don't you worry about it."),
@@ -242,16 +243,16 @@ class Chat(ctk.CTkFrame):
             "prompt": ("Would you like to choose a specific GP from our\n"
                        "provided list of available clinicians?"),
 
-            "declined": (f"Great thank you {appt_data.user}, I really appreciate that. "
+            "declined": (f"Great thank you {self.user_data.user}, I really appreciate that. "
                          "Your request will be sent to an available clinician whom will be assigned\n"
                          "to you shortly. All your details provided today will be provided too. Be sure"
                          "to look out on your 'Notifications' tab for request acceptance.\n\nHave a nice day!."),
 
-            'confused': f"I apologise {appt_data.user}, I didn't get that. Could you please message again?",
+            'confused': f"I apologise {self.user_data.user}, I didn't get that. Could you please message again?",
 
             "accepted": "Please select one of the available GPs listed below:",
 
-            "completed": f"""Great, thank you {appt_data.user}. Your request has been sent to DR {appt_data.doctor},
+            "completed": f"""Great, thank you {self.user_data.user}. Your request has been sent to DR {"Jane Doe"},
                             along with all your submitted details today. You'll be notified on your dash when your 
                             request has been accepted. Be sure to keep a look out on your NOTIFICATIONS tab. 
                             
@@ -316,7 +317,7 @@ class Chat(ctk.CTkFrame):
                 return
 
             if self.current_state == 'greeting':
-                appt_data.symptoms = message
+                self.user_data.symptoms = message
                 self.current_state = 'images'
 
             self.create_message_box(f"{message}", 'client')
@@ -346,7 +347,7 @@ class Chat(ctk.CTkFrame):
                     self.disable_chat()
 
                     if self.upload_frame:
-                        appt_data.images = self.upload_frame.images
+                        self.user_data.images = self.upload_frame.images
                 else:
                     self.create_message_box(f"{self.ai_states['confused']}", 'service')
 
@@ -832,17 +833,15 @@ class LOGIN(ctk.CTkFrame):
 
 class DASHBOARD(ctk.CTkFrame):
 
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, user_data, client):
         ctk.CTkFrame.__init__(self, parent)
 
         print(f"{self.__class__.__name__} successfully initialised.")
 
         # CONFIGURATIONS
-        self.user_type = "Loading"
+        self.user_data = user_data
         self.controller = controller
-        self.current_frame = None
-        self.frames = {}
-        self.pages_list = []
+        self.client = client
 
         self.logo_image_path = "Images/Logo_Bluebg.png"
 
@@ -858,13 +857,16 @@ class DASHBOARD(ctk.CTkFrame):
         self.calibri_3 = ctk.CTkFont(family="Calibri Light", size=20, underline=True)
         self.calibri_light = ctk.CTkFont(family="Calibri Light", size=25)
 
+        self.create_widgets()
+        self.place_widgets()
+
     def create_widgets(self):
         original_logo_image = Image.open(self.logo_image_path)
         logo_image_ck = ctk.CTkImage(original_logo_image, size=(96, 90))
 
         self.title_bar = ctk.CTkFrame(self, fg_color='#4c6fbf', corner_radius=0, height=90)
         self.logo_image = ctk.CTkLabel(self.title_bar, image=logo_image_ck, text='')
-        self.user_lbl = ctk.CTkLabel(self.title_bar, text='Loading', text_color='white',
+        self.user_lbl = ctk.CTkLabel(self.title_bar, text=self.user_data.user, text_color='white',
                                      font=self.helvetica_bold)
         self.menu_bar = ctk.CTkFrame(self, fg_color='#3c5691', corner_radius=0, width=300)
         self.dash_frame = ctk.CTkFrame(self.menu_bar, fg_color='#2a3e6a', corner_radius=0, height=75)
@@ -883,22 +885,14 @@ class DASHBOARD(ctk.CTkFrame):
         self.buttons_frame.pack(pady=80, anchor=CENTER)
         self.main_frame.grid(row=1, column=1, rowspan=2, sticky='nsew')
 
-    def show_frame(self, cont):
-        frame = self.frames[cont]
-        if frame:
-            print('Displaying frame:', cont)
-
-            frame.pack(side="left", fill="both", expand=True)
-            frame.tkraise()
-
 
 class PATIENT_DASHBOARD(DASHBOARD):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
+    def __init__(self, parent, controller, user_data, client):
+        super().__init__(parent, controller, user_data, client)
 
         print(f"{self.__class__.__name__} successfully initialised.")
-
-        self.client = controller.client
+        self.client = client
+        self.user_data = user_data
         self.frames = {}
         self.pages_list = {
             "request_app": REQUEST_APPOINTMENTS,
@@ -934,22 +928,16 @@ class PATIENT_DASHBOARD(DASHBOARD):
             },
         }
 
+        self.configure_menu()
+        for key, value in self.pages_list.items():
+            self.frames[key] = value(self.main_frame, self, self.user_data)
         # self.create_widgets()
         # self.configure_menu()
         # self.place_widgets()
 
-    def create_pages(self):
-        for key, value in self.pages_list.items():
-            self.frames[key] = value(self.main_frame, self)
-            # self.frames[key].grid(row=0, column=0, sticky='nsew')
-            # self.frames[key].pack(side="top", fill="both", expand=True)
-
     def show_frame(self, cont: str):
         frame = self.frames[cont]
         print('Displaying frame:', cont)
-
-        if cont == 'chat_room':
-            ClientCommands.handle_chat(self.client, appt_data.user, Commands.chat_commands['announcement'])
 
         try:
             for f in self.frames.values():
@@ -979,7 +967,7 @@ class PATIENT_DASHBOARD(DASHBOARD):
 
 class REQUEST_APPOINTMENTS(ctk.CTkFrame):
 
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, user_data):
         ctk.CTkFrame.__init__(self, parent)
 
         print(f"{self.__class__.__name__} successfully initialised.")
@@ -987,6 +975,7 @@ class REQUEST_APPOINTMENTS(ctk.CTkFrame):
         self.configure(fg_color='white')
         self.available_times = ['Morning', 'Early Afternoon', 'Late Afternoon', 'Evening']
         self.selected_time = None
+        self.user_data = user_data
         self.buttons = []
         self.control = controller
         self.title = None
@@ -1027,8 +1016,8 @@ class REQUEST_APPOINTMENTS(ctk.CTkFrame):
         return print(f"Selected time has been updated to: {self.selected_time}")
 
     def update_time(self):
-        appt_data.day = self.date_entry.selected_button
-        appt_data.time = self.selected_time
+        self.user_data.day = self.date_entry.selected_button
+        self.user_data.time = self.selected_time
         # self.control.appointment_data.update_times(self.selected_time, self.date_entry.selected_button)
         self.control.show_frame("symptoms")
 
@@ -1054,13 +1043,14 @@ class REQUEST_APPOINTMENTS(ctk.CTkFrame):
 
 
 class SYMPTOMS(ctk.CTkFrame):
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, user_data):
         ctk.CTkFrame.__init__(self, parent)
 
         print(f"{self.__class__.__name__} successfully initialised.")
 
         self.controller = controller
         self.configure(fg_color='white')
+        self.user_data = user_data
 
         self.title = None
         self.ai_chat = None
@@ -1072,7 +1062,7 @@ class SYMPTOMS(ctk.CTkFrame):
     def create(self):
         self.title = ctk.CTkLabel(self, text='Discuss your symptoms', text_color='Black',
                                   font=('Arial Bold', 30))
-        self.ai_chat = Chat(self)
+        self.ai_chat = Chat(self, user_data=self.user_data)
         self.ai_chat.state = 'ai'
         self.cancel_button = ctk.CTkButton(self, text='Cancel Request', text_color='white', font=('Arial Bold', 20),
                                            fg_color='#b1c9eb', corner_radius=5)
@@ -1086,11 +1076,12 @@ class SYMPTOMS(ctk.CTkFrame):
 
 
 class chatRoom(ctk.CTkFrame):
-    def __init__(self, parent, controller, client=None):
+    def __init__(self, parent, controller, user_data):
         ctk.CTkFrame.__init__(self, parent)
 
         self.configure(fg_color='white')
         self.title = None
+        self.user_data = user_data
         self.controller = controller
         self.room = None
 
@@ -1100,7 +1091,7 @@ class chatRoom(ctk.CTkFrame):
     def create(self):
         self.title = ctk.CTkLabel(self, text='Your chat room', text_color='Black',
                                   font=('Arial Bold', 30))
-        self.room = Chat(self, 'Chat', self.controller.client)
+        self.room = Chat(self, 'Chat', client=self.controller.client, user_data=self.user_data)
 
     def place(self):
         self.title.pack(pady=(80, 5), padx=30, anchor=W)

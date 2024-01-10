@@ -110,7 +110,7 @@ class Server:
             Args: client (socket.socket): Client socket object.
         """
 
-        self.message = {'COMMAND': None, 'CLIENT': None, 'DATA': None}
+        self.message = {'COMMAND': None, 'CLIENT': None, 'DATA': []}
 
         users = {-1: None, 1: self.USER_ROLE_PATIENT, 2: self.USER_ROLE_PATIENT}
 
@@ -144,7 +144,7 @@ class Server:
 
                         self.message["COMMAND"] = self.COMMAND_REFERRAL
                         self.message["CLIENT"] = self.USER_ROLE_CLINICIAN
-                        self.message["DATA"] = code
+                        self.message["DATA"].append(code)
 
                         client.send(json.dumps(self.message).encode())
 
@@ -166,22 +166,23 @@ class Server:
                     if message['COMMAND'] == self.COMMAND_LOGIN:
                         logging.info(">: Server received request to validate login credentials.")
                         accept_login = self.compare_login(message)
+                        user_type = users[accept_login[0]]
                         logging.debug(users[accept_login[0]])
 
-                        if users[accept_login[0]] is not None:
-                            logging.info(f">: User is a {users[accept_login[0]]}")
+                        if user_type is not None:
+                            logging.info(f">: {accept_login[1]} is a {user_type}")
 
                             self.message['COMMAND'] = self.COMMAND_ACCEPT
                             self.message['CLIENT'] = users[accept_login[0]]
-                            self.message['DATA'] = accept_login[1]
+                            self.message['DATA'] = [user_type, accept_login[1]]
 
                             logging.debug(self.message)
                             client.send(json.dumps(self.message).encode())
-                        else:
 
+                        else:
                             self.message['COMMAND'] = self.COMMAND_DENY
                             self.message['CLIENT'] = users[accept_login[0]]
-                            self.message['DATA'] = None
+                            self.message['DATA'] = []
 
                             logging.debug(self.message)
                             client.send(json.dumps(self.message).encode())
