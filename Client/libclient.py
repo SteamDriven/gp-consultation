@@ -6,13 +6,6 @@ import logging
 
 
 class Client:
-    COMMAND_REFERRAL = 'REFERRAL'
-    COMMAND_END = 'END'
-    COMMAND_COMPLETED = 'COMPLETED'
-    COMMAND_PASSED = 'PASSED'
-    COMMAND_FAILED = 'FAILED'
-    COMMAND_ACCEPT = 'ACCEPT'
-    COMMAND_DENY = 'DENY'
 
     def __init__(self, host, port):
         self.host = host
@@ -40,8 +33,10 @@ class Client:
             self.handle_server_messages(Commands.chat_commands['announcement'], None, message, False)
 
     def send_message(self, command, client, data):
+        print(command)
         try:
             message = {"COMMAND": command, "CLIENT": client, "DATA": data}
+            print(message)
             self.client_socket.send(json.dumps(message).encode())
 
         except (socket.error, ConnectionError) as e:
@@ -65,25 +60,28 @@ class Client:
         if receive:
             received = self.receive_message()
 
-            if received["COMMAND"] == self.COMMAND_REFERRAL:
+            if received["COMMAND"] == Commands.COMMAND_REFERRAL:
                 return received["DATA"]
+
+            if received['COMMAND'] == Commands.RETURN_DOCTORS:
+                return received['DATA']
 
             if received['COMMAND'] == Commands.chat_commands['receive']:
                 logging.info(f"Message: {received['DATA']} received from USER: {received['CLIENT']}")
 
-            if received["COMMAND"] == self.COMMAND_END:
+            if received["COMMAND"] == Commands.COMMAND_END:
                 self.handle_close()
 
-            if received["COMMAND"] == self.COMMAND_COMPLETED:
+            if received["COMMAND"] == Commands.COMMAND_COMPLETED:
                 return 'CHANGE TO LOGIN'
 
-            if received['COMMAND'] == self.COMMAND_PASSED:
+            if received['COMMAND'] == Commands.COMMAND_PASSED:
                 return 'ACCEPT'
 
-            if received['COMMAND'] == self.COMMAND_FAILED:
+            if received['COMMAND'] == Commands.COMMAND_FAILED:
                 return 'DECLINE'
 
-            if received['COMMAND'] == self.COMMAND_ACCEPT:
+            if received['COMMAND'] == Commands.COMMAND_ACCEPT:
                 logging.info('>: Login was accepted.')
 
                 if received['CLIENT']:
@@ -95,7 +93,7 @@ class Client:
                         logging.info('Changing to clinician dash.')
                         return ['CHANGE TO CLINICIAN DASH', received['DATA']]
 
-            if received['COMMAND'] == self.COMMAND_DENY:
+            if received['COMMAND'] == Commands.COMMAND_DENY:
                 logging.info('Login request was denied by server.')
                 return ['SHOW LOGIN WARNING', False]
 

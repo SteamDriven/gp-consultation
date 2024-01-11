@@ -43,7 +43,7 @@ class appointmentData:
     @doctor.setter
     def doctor(self, newDoctor):
         self._assignedDoctor = newDoctor
-        logging.info(f"Appointment data > DOCTOR: {self._symptoms} assigned to {self.user}")
+        logging.info(f"Appointment data > DOCTOR: {self._assignedDoctor} assigned to {self.user}")
 
     @symptoms.setter
     def symptoms(self, newSymptoms):

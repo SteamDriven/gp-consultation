@@ -115,6 +115,19 @@ class Database:  # Created a class for Database along with necessary attributes
         finally:
             self.conn.commit()
 
+    def request_doctors(self):
+        print('>: Database is searching for available doctors')
+        self.sql = '''Select Clinician_ID, First_Name, Last_Name from CLINICIAN'''
+        self.query(self.sql, None)
+        results = self.cursor.fetchall()
+
+        if len(results) > 0:
+            print(results)
+            return results
+        else:
+            print('No doctors currently available in database.')
+            return None
+
     @staticmethod
     def generate_id():
         """
@@ -199,6 +212,20 @@ class Database:  # Created a class for Database along with necessary attributes
         #     self.cursor.execute(self.sql, (data['DATA'][3], data['DATA'][4]))
         #
         #     return bool(self.cursor.fetchone())
+
+        if data['CLIENT']:
+            if isinstance(data['CLIENT'], int):
+                self.sql = '''Select First_Name, Last_Name from CLINICIAN where Clinician_ID=?'''
+                self.cursor.execute(self.sql, (data['CLIENT'],))
+
+                if self.cursor.fetchone():
+                    logging.info(f"USER {data['CLIENT']}, Name: {self.cursor.fetchone()}")
+                    return self.cursor.fetchone()
+                else:
+                    self.sql = '''Select First_Name, Last_name from PATIENT where Patient_ID=?'''
+                    self.cursor.execute(self.sql, (data['CLIENT'],))
+                    logging.info(f"USER {data['CLIENT']}, Name: {self.cursor.fetchone()}")
+                    return self.cursor.fetchone()
 
         if data['CLIENT'] is None:  # This will return a number that will be used to identify the type of user.
             email, password = data["DATA"][0], data["DATA"][1]

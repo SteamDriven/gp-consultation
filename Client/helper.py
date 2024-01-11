@@ -21,6 +21,11 @@ class ClientCommands:
         client.send_chat_message(message, command, user)
 
     @staticmethod
+    def request_doctor(client):
+        logging.info(f"Requesting available doctors from server.")
+        return client.handle_server_messages(command=Commands.COMMAND_REQUEST_DOCTOR, client=None, data=None)
+
+    @staticmethod
     def handle_failed_login():
         logging.info(">: Client has requested to login. Server has denied access.")
         messagebox.showwarning('Login Error', "Login credentials do not exist!")

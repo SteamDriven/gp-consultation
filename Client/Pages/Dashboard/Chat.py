@@ -15,7 +15,7 @@ class ChatRoom(CTkFrame):
     def create(self):
         self.title = CTkLabel(self, text='Your chat room', text_color='Black',
                               font=('Arial Bold', 30))
-        self.room = Chat(self, 'Chat', client=self.controller.client, user_data=self.user_data)
+        self.room = Chat(self, 'Chat', client=self.controller.client, user_data=self.user_data, state='client')
 
     def place(self):
         self.title.pack(pady=(80, 5), padx=30, anchor=W)
