@@ -11,8 +11,14 @@ class Commands:
         'fail':                 'FAILED',
         'accept':               'ACCEPT',
         'deny':                 'DENY',
-        'request_doctor':       'R_DOCTOR',
+        'request doctor':       'R_DOCTOR',
         'return doctor':        'RETURN_DOCTOR',
+
+        'page commands': {
+            'change p':         'CHANGE TO PATIENT DASH',
+            'change d':         'CHANGE TO DOCTOR DASH',
+            'warning':          'SHOW LOGIN WARNING'
+        },
 
         'appointments': {
             'create apt':           'CREATE APT',

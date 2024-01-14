@@ -5,12 +5,12 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
-from Client.Pages.Dashboard.Dashboard import PatientDashboard
+from Client.Pages.Dashboard.Dashboard import PatientDashboard, DoctorDashboard
 from Client.Pages.Login import Login
 from libclient import Client
-from methods import Validator, appointmentData
+from methods import *
 from helper import ClientCommands
-from configs import UserTypes
+from configs import *
 
 port = 50000
 
@@ -28,14 +28,14 @@ class App(ctk.CTk):
 
         self.validations = Validator()
         self.client_commands = ClientCommands()
-        self.user_data = appointmentData()
+        self.user_data = None
 
         self.pages_list = {
             "login": Login,
         }
 
-        # self.create_random_doctor()
-        # self.create_random_patient()
+        # self.create_random_doctor(2)
+        # self.create_random_patient(2)
 
         # Widgets
         self.container = ctk.CTkFrame(self)
@@ -67,6 +67,7 @@ class App(ctk.CTk):
             print(f"Error in show_frame: {e}")
 
         # Initialise
+
         self.mainloop()
 
     def validate_login(self, data):
@@ -76,13 +77,15 @@ class App(ctk.CTk):
 
         logging.info(">: Client has requested to login. Sending login data to server.")
         accepted = self.client_commands.login(self.client, data)
+        print(f"{accepted} is the received login data.")
         command = accepted[0]
         info = accepted[1]
 
-        if command == 'CHANGE TO PATIENT DASH':
+        if command == Commands.packet_commands['page commands']['change p']:
             ClientCommands.handle_successful_login(UserTypes.PATIENT)
             logging.info(f"Received login data: {info}")
 
+            self.user_data = PatientData()
             self.user_data.user = info
 
             try:
@@ -96,24 +99,46 @@ class App(ctk.CTk):
             except Exception as e:
                 print(f"Error in show_frame: {e}")
 
-        elif command == 'SHOW LOGIN WARNING':
+        elif command == Commands.packet_commands['page commands']['change d']:
+            ClientCommands.handle_successful_login(UserTypes.CLINICIAN)
+            logging.info(f"Received login data: {info}")
+
+            self.user_data = DoctorData()
+            self.user_data.user = info
+
+            try:
+                for f in self.frames.values():
+                    f.pack_forget()
+
+                frame = DoctorDashboard(self.container, self, self.user_data, self.client)
+                frame.pack(side="top", fill="both", expand=True)
+                frame.tkraise()
+
+            except Exception as e:
+                print(f"Error in show_frame: {e}")
+
+        elif command == Commands.packet_commands['page commands']['warning']:
             ClientCommands.handle_failed_login()
 
-    def create_random_doctor(self):
+    def create_random_doctor(self, amt):
         print('Generating fake data')
-        doctor_data = ClientCommands.generate_user_data(UserTypes.CLINICIAN)
 
-        print("Doctor Data:", doctor_data)
+        for i in range(amt):
+            doctor_data = ClientCommands.generate_user_data(UserTypes.CLINICIAN)
 
-        ClientCommands.register(self.client, UserTypes.CLINICIAN, doctor_data)
+            print("Doctor Data:", doctor_data)
 
-    def create_random_patient(self):
+            ClientCommands.register(self.client, UserTypes.CLINICIAN, doctor_data)
+
+    def create_random_patient(self, amt):
         print('Generating fake data')
-        patient_data = ClientCommands.generate_user_data(UserTypes.PATIENT)
 
-        print("Patient Data:", patient_data)
+        for i in range(amt):
+            patient_data = ClientCommands.generate_user_data(UserTypes.PATIENT)
 
-        ClientCommands.register(self.client, UserTypes.PATIENT, patient_data)
+            print("Patient Data:", patient_data)
+
+            ClientCommands.register(self.client, UserTypes.PATIENT, patient_data)
 
 
 app_client = Client('localhost', port)

@@ -58,8 +58,8 @@ class ClientCommands:
         return user_data
 
     @staticmethod
-    def set_appointment(client, command, user_data):
+    def set_appointment(client, role, command, user_data):
         print(">: Preparing info to setup appointment on server.")
-        client.handle_server_messages(command, client, user_data)
+        return client.handle_server_messages(command, role, user_data)
 
 

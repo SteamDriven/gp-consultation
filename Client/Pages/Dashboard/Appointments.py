@@ -2,6 +2,30 @@ from customtkinter import *
 from Client.Widgets import Button, Calendar
 
 
+class Appointments(CTkFrame):
+    def __init__(self, parent, controller, user_data):
+        CTkFrame.__init__(self, parent)
+
+        print(f"{self.__class__.__name__} successfully initialised.")
+
+        self.configure(fg_color='white')
+
+        # Method calls
+        self.create()
+        self.place()
+
+        # Widgets
+        self.title = None
+
+    # Methods
+    def create(self):
+        self.title = CTkLabel(self, text='Your appointments', text_color='Black',
+                              font=('Arial Bold', 30))
+
+    def place(self):
+        self.title.pack(pady=(80, 5), padx=30, anchor=W)
+
+
 class RequestAppointments(CTkFrame):
 
     def __init__(self, parent, controller, user_data):
@@ -53,8 +77,13 @@ class RequestAppointments(CTkFrame):
         return print(f"Selected time has been updated to: {self.selected_time}")
 
     def update_time(self):
-        self.user_data.day = self.date_entry.selected_button
-        self.user_data.time = self.selected_time
+        day = self.date_entry.selected_button
+        day_info = [day.day, str(day.date), str(day.year)]
+        time = self.selected_time.placeholder
+
+        print(f"Day: {day_info} at {time}")
+        self.user_data.day = ' '.join(day_info)
+        self.user_data.time = time
         self.control.show_frame("symptoms")
 
     def create(self):
