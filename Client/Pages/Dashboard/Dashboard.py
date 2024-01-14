@@ -3,8 +3,9 @@ from customtkinter import *
 
 from PIL import Image
 from Client.Pages.Dashboard.Chat import ChatRoom
-from Client.Pages.Dashboard.RequestAppointments import RequestAppointments
+from Client.Pages.Dashboard.Appointments import *
 from Client.Pages.Dashboard.Symptoms import Symptoms
+from Client.Pages.Dashboard.Notifications import *
 from Client.Widgets import ImageButton
 
 from os.path import *
@@ -57,11 +58,11 @@ class Dashboard(CTkFrame):
         self.title_bar = CTkFrame(self, fg_color='#4c6fbf', corner_radius=0, height=90)
         self.logo_image = CTkLabel(self.title_bar, image=logo_image_ck, text='')
         self.user_lbl = CTkLabel(self.title_bar, text=self.username, text_color='white',
-                                     font=self.helvetica_bold)
+                                 font=self.helvetica_bold)
         self.menu_bar = CTkFrame(self, fg_color='#3c5691', corner_radius=0, width=300)
         self.dash_frame = CTkFrame(self.menu_bar, fg_color='#2a3e6a', corner_radius=0, height=75)
         self.dash_btn = CTkButton(self.dash_frame, fg_color='#2a3e6a', corner_radius=0, text='My Dashboard',
-                                      font=('Arial Bold', 35), hover=False)
+                                  font=('Arial Bold', 35), hover=False)
         self.buttons_frame = CTkFrame(self.menu_bar, fg_color='#3c5691', corner_radius=0)
         self.main_frame = CTkFrame(self, fg_color='white', corner_radius=0)
 
@@ -81,21 +82,24 @@ class PatientDashboard(Dashboard):
         super().__init__(parent, controller, user_data, client)
 
         print(f"{self.__class__.__name__} successfully initialised.")
+
         self.client = client
         self.user_data = user_data
         self.frames = {}
         self.pages_list = {
 
-            "request_app": RequestAppointments,
+            "request app": RequestAppointments,
             "symptoms": Symptoms,
-            "chat_room": ChatRoom,
+            "chat room": ChatRoom,
+            'appointments': Appointments,
+            'notifications': Notifications,
         }
 
         self.buttons = {
             'Appointments': {
                 "path": f'{join(dirname(__file__), "../../Images/Appointments.PNG")}',
                 "size": (56, 60),
-                "command": lambda: self.show_frame("request_app")
+                "command": lambda: self.show_frame("request app")
             },
             'Profile': {
                 "path": f'{join(dirname(__file__), "../../Images/Profile.PNG")}',
@@ -110,14 +114,16 @@ class PatientDashboard(Dashboard):
             'Notifications': {
                 "path": f'{join(dirname(__file__), "../../Images/Notifications.PNG")}',
                 "size": (58, 58),
-                "command": None
+                "command": lambda: self.show_frame("notifications")
             },
             'Chat': {
                 "path": f'{join(dirname(__file__), "../../Images/Chat.PNG")}',
                 "size": (67, 52),
-                "command": lambda: self.show_frame('chat_room')
+                "command": lambda: self.show_frame('chat room')
             },
         }
+
+        self.dash_btn.configure(command=lambda: self.show_frame('dashboard'))
 
         self.configure_menu()
         for key, value in self.pages_list.items():
@@ -144,18 +150,23 @@ class PatientDashboard(Dashboard):
     def configure_menu(self):
         self.buttons_frame.grid_columnconfigure(0, weight=0)
         self.buttons_frame.grid_rowconfigure((0, 1, 2, 3, 4), weight=0)
+        print('configuring menu for loading buttons')
 
         for label, info in self.buttons.items():
             print("\nButton Type:", label)
 
             button = ImageButton(self.buttons_frame,
-                                  label,
-                                  info['path'],
-                                  info['size'],
-                                  command=info['command'])
+                                 label,
+                                 info['path'],
+                                 info['size'],
+                                 command=info['command'])
 
             button.pack(pady=30, anchor=W)
+            print('packing button')
 
 
-class DOCTOR_DASHBOARD(Dashboard):
-    pass
+class DoctorDashboard(Dashboard):
+    def __init__(self, parent, controller, user_data, client):
+        super().__init__(parent, controller, user_data, client)
+
+        print(f"{self.__class__.__name__} successfully initialised.")

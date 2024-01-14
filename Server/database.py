@@ -61,6 +61,8 @@ tables = {
               Date              text,
               Time              text,
               Status            text,
+              D_Not             integer,
+              C_Not             integer,
               
 
               primary key (Booking_ID)
@@ -220,32 +222,33 @@ class Database:  # Created a class for Database along with necessary attributes
             return result
 
     def create_booking(self, data):
-        self.sql = '''INSERT INTO BOOKINGS (Booking_ID, Patient_ID, Clinician_ID, Date, Time, Status)
-        VALUES (?, ?, ?, ?, ?, ?);'''
+        self.sql = '''INSERT INTO BOOKINGS (Booking_ID, Patient_ID, Clinician_ID, Date, Time, Status, D_Not, C_Not)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?);'''
 
         self.query_data = []
 
         booking_id = self.generate_id()
-        patient_id = data['patient'][1][0]
-        doctor_id = data['doctor'][1][0]
+        patient_id = data['patient']
+        doctor_id = int(data['doctor'])
         date = data['date']
         time = data['time']
         status = 'Pending'
+        d_not = data['d_not']
+        c_not = data['c_not']
 
-        packet = (booking_id, patient_id, doctor_id, date, time, status)
+        packet = (booking_id, patient_id, doctor_id, date, time, status, d_not, c_not)
         print(f">: Database is storing booking info: {packet}")
 
-        self.query_data.extend(packet)
-        self.query(self.sql, self.query_data)
+        self.query(self.sql, packet)
         print(f">: Booking information successfully registered to database.")
 
-        return True
+        return booking_id
 
     def check_records(self, data):
         self.sql = " "
         print(f'Database received: {data}')
         patient_sql = '''SELECT Patient_ID, First_Name, Last_Name FROM PATIENT WHERE EMAIL=? AND Password=?'''
-        doctor_sql = '''SELECT Patient_ID, First_Name, Last_Name FROM CLINICIAN WHERE EMAIL=? AND Password=?'''
+        doctor_sql = '''SELECT Clinician_ID, First_Name, Last_Name FROM CLINICIAN WHERE EMAIL=? AND Password=?'''
 
         if data['CLIENT']:
             if isinstance(data['CLIENT'], int):
@@ -275,7 +278,7 @@ class Database:  # Created a class for Database along with necessary attributes
                     if role == self.USER_ROLE_PATIENT:
                         self.sql = patient_sql
 
-                    else:
+                    elif role == self.USER_ROLE_CLINICIAN:
                         self.sql = doctor_sql
 
                     self.cursor.execute(self.sql, [email, password])

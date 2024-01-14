@@ -8,13 +8,16 @@
       <jdbc-url>jdbc:sqlite:identifier.sqlite</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="Olinic Management" uuid="b5da47c9-27c4-4a57-a354-c7d2ab8dc2b0">
+    <data-source source="LOCAL" name="Olinic Management [2]" uuid="fbcc01b0-8913-436e-af79-fbc1768fd037">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:C:\Users\Adriel\OneDrive - King Edward VI College, Stourbridge\NEA\Coursework\Olinic Management.db</jdbc-url>
+      <jdbc-url>jdbc:sqlite:C:\Users\Adriel\OneDrive - King Edward VI College, Stourbridge\NEA\Coursework\Server\Olinic Management.db</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
       <libraries>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.43.0/org/xerial/sqlite-jdbc/3.43.0.0/sqlite-jdbc-3.43.0.0.jar</url>
+        </library>
         <library>
           <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.39.2/sqlite-jdbc-3.39.2.jar</url>
         </library>

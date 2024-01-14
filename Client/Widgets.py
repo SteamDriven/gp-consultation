@@ -4,7 +4,7 @@ from customtkinter import *
 from functools import partial
 from PIL import Image
 from datetime import datetime
-from configs import Commands
+from configs import Commands, UserTypes
 from helper import ClientCommands
 
 import logging
@@ -452,12 +452,13 @@ class Chat(CTkFrame):
 
                     logging.info(f"User has selected DOCTOR: {doctor_info}")
                     self.assigned_doctor = doctor_info
-                    self.user_data.doctor = self.assigned_doctor
+                    self.user_data.doctor = ['DOCTOR', self.assigned_doctor]
 
                     if "John Doe" in self.ai_states['completed']:
+                        print(' '.join(self.user_data.doctor[1][1:]).title())
                         self.ai_states['completed'] = self.ai_states['completed'].replace("John Doe",
                                                                                           ' '.join(
-                                                                                              self.user_data.doctor[
+                                                                                              self.user_data.doctor[1][
                                                                                               1:]).title())
 
                     self.create_service_message(f"{(self.ai_states[self.current_state])}")
@@ -465,17 +466,27 @@ class Chat(CTkFrame):
 
                     logging.info(f"Sending USER: {self.user_data.user}'s appointment booking for processing.")
 
-                    ClientCommands.set_appointment(
+                    print(f"{self.user_data.user}'s is the USER who has requested a booking.")
+                    print(f"{self.user_data.doctor} is the USER's assigned doctor.")
+
+                    data_dict = self.user_data.to_dict()
+
+                    notification = ClientCommands.set_appointment(
+                        self.client,
                         self.user_data.user[0],
                         appt_cdms['create apt'],
-                        self.user_data
+                        data_dict
                     )
 
-                    #  Send appointment information to the server
-                    #  Send notification to the patient
-                    #  Send notification request to the doctor
-                    #  Store apppointment in the database
-            else:
+                    if notification:
+                        if self.user_data.user[0] == UserTypes.CLINICIAN:
+                            self.user_data.patients = notification[1]
+
+                            print(f"Creating a DOCTOR notification with the message: {notification[2]}")
+
+                        elif self.user_data.user[0] == UserTypes.PATIENT:
+                            print(f"Creating a PATIENT notification with the message: {notification[1]}")
+
                 self.create_service_message(f"{self.ai_states['confused']}")
             return
 
@@ -632,11 +643,13 @@ class DateFrame(CTkFrame):
     ENABLED_TEXT = '#ffffff'
     ENABLED_BG = '#4c6fbf'
 
-    def __init__(self, master=None, day=None, date=None, colour='green', **kwargs):
+    def __init__(self, master=None, day=None, date=None, month=None, year=None, colour='green', **kwargs):
         super().__init__(master, **kwargs)
 
         self.day = day
         self.date = date
+        self.month = month
+        self.year = year
         self.colour = colour
         self.state = 'DISABLED'
 
@@ -715,18 +728,27 @@ class Calendar(CTkFrame):
         for i, week in enumerate(cal):
             if datetime.now().day in week:
                 return i
-            return 0
+
+        return 0
 
     def get_selected_button(self):
         return self.selected_button
 
     def select_date(self, index):
-        if len(self.buttons) > 0:
-            selected = self.buttons[index]
-            selected.change_state()
-            self.selected_button = selected
+        today = datetime.now()
 
-        print(f'{self.selected_button} has been selected randomly.')
+        if index == 0:
+            for button in self.buttons:
+                if button.date == today.day and button.month == today.month and button.year == today.year:
+                    self.selected_button = button
+                    self.selected_button.change_state()
+
+                    break
+        else:
+            self.selected_button = random.choice(self.buttons)
+            self.selected_button.change_state()
+
+        print(f'{self.selected_button} has been chosen based on today.')
 
     def display_buttons(self):
         if len(self.buttons) > 0:
@@ -734,8 +756,9 @@ class Calendar(CTkFrame):
                 print(button)
 
     def set_current_date(self):
-        self.year = datetime.now().year
-        self.month = datetime.now().month
+        today = datetime.now()
+        self.year = today.year
+        self.month = today.month
 
         if self.year and self.month:
             self.current_week = self.get_current_week()
@@ -782,27 +805,38 @@ class Calendar(CTkFrame):
 
     def display_week(self):
         cal = calendar.monthcalendar(self.year, self.month)
-        week = cal[self.current_week]
 
-        for row, day in enumerate(week):
-            frame = DateFrame(self.day_frame, colour='#f2f2f2')
+        # Ensure that the current_week is within a valid range
+        if 0 <= self.current_week < len(cal):
+            week = cal[self.current_week]
+            print(f"{self.current_week} is the current week we're in.")
 
-            if day == 0:
-                state = False
-            else:
-                state = True
+            for i, day in enumerate(week):
+                self.display_day(i, day)
 
-            if state:
-                weekday = self.get_day(datetime(self.year, self.month, day))
-                frame.date = day
-                frame.day = weekday
+    def display_day(self, column, day):
+        frame = DateFrame(self.day_frame, colour='#f2f2f2')
 
-                frame.create_labels()
-                frame.place_widgets()
-                frame.grid(row=0, column=row, sticky='nsew', padx=15)
+        if day == 0:
+            state = False
+        else:
+            state = True
 
-                frame.bind("<1>", lambda event, button=frame: self.select_button(event, button))
-                self.buttons.append(frame)
+        if state:
+            weekday = self.get_day(datetime(self.year, self.month, day))
+            frame.date = day
+            frame.day = weekday
+            frame.year = self.year
+            frame.month = self.month
+
+            print(frame.date, frame.day, frame.year, frame.month)
+
+            frame.create_labels()
+            frame.place_widgets()
+            frame.grid(row=0, column=column, sticky='nsew', padx=15)
+
+            frame.bind("<1>", lambda event, button=frame: self.select_button(event, button))
+            self.buttons.append(frame)
 
     def update_calendar(self):
         if self.current_week >= len(calendar.monthcalendar(self.year, self.month)):
@@ -833,7 +867,7 @@ class Calendar(CTkFrame):
 
         self.clear_frame()
         self.display_week()
-        self.select_date(0)
+        self.select_date(1)
 
     def select_button(self, event, button):
         print(f"{button} has been selected. Current selected date is {self.selected_button}")
@@ -889,3 +923,10 @@ class ImageButton(CTkFrame):
     def place_widgets(self):
         self.logo.grid(row=0, column=0, sticky='ew')
         self.btn.grid(row=0, column=1, columnspan=2, sticky='ew')
+
+
+class Notification(CTkFrame):
+    def __init__(self, master=None, message='LOADING', **kwargs):
+        super().__init__(master, **kwargs)
+
+        pass

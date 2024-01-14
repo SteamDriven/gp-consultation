@@ -63,10 +63,13 @@ class Client:
             if received["COMMAND"] == Commands.packet_commands['referral']:
                 return received["DATA"]
 
-            if received['COMMAND'] == Commands['notifications']['send note']:
-                logging.info("Sending notification notice to client.")
+            if received['COMMAND'] == Commands.packet_commands['notifications']['send doctor']:
+                return received['DATA']
 
-            if received['COMMAND'] == Commands.packet_commands['return doctors']:
+            if received['COMMAND'] == Commands.packet_commands['notifications']['send patient']:
+                return received['DATA']
+
+            if received['COMMAND'] == Commands.packet_commands['return doctor']:
                 return received['DATA']
 
             if received['COMMAND'] == Commands.chat_commands['receive']:
@@ -90,11 +93,11 @@ class Client:
                 if received['CLIENT']:
                     if received['DATA'][0] == UserTypes.PATIENT:
                         logging.info('Changing to patient dash.')
-                        return ['CHANGE TO PATIENT DASH', received['DATA']]
+                        return [Commands.packet_commands['page commands']['change p'], received['DATA']]
 
-                    elif received['DATA'][0] == UserTypes.PATIENT:
+                    elif received['DATA'][0] == UserTypes.CLINICIAN:
                         logging.info('Changing to clinician dash.')
-                        return ['CHANGE TO CLINICIAN DASH', received['DATA']]
+                        return [Commands.packet_commands['page commands']['change d'], received['DATA']]
 
             if received['COMMAND'] == Commands.packet_commands['deny']:
                 logging.info('Login request was denied by server.')
