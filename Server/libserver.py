@@ -64,16 +64,39 @@ class Server:
                 else:
                     message = json.loads(data.decode())
 
-                    if message['COMMAND'] == Commands.chat_commands['announcement']:
-                        logging.info(f">: {message['DATA']} has joined the chat.")
+                    if message['COMMAND'] == Commands.packet_commands['appointments']['create_apt']:
+                        logging.info(f">: Received {message['CLIENT']}'s booking data. Registering to database.")
 
-                    if message['COMMAND'] == Commands.COMMAND_REQUEST_DOCTOR:
+                        doctor_to_assign = message['DATA'].doctor
+                        patient_to_assign = message['DATA'].user
+                        date_of_appt = message['DATA'].date
+                        time_of_appt = message['DATA'].time
+
+                        data_packet = {
+                            'doctor': doctor_to_assign,
+                            'patient': patient_to_assign,
+                            'date': date_of_appt,
+                            'time': time_of_appt
+                        }
+
+                        booking = self.database.create_booking(data_packet)
+                        logging.info("Data packet for booking has been sent for registration.")
+
+                        if booking:
+                            logging.info(f"Sending notification request to Doctor: {data_packet['doctor']}\n"
+                                         f"Sending notification alert to Patient: {data_packet['patient']}\n"
+                                         f"Switching USER: {data_packet['patient']}'s screen\n"
+                                         f"to current appointments")
+
+
+
+                    if message['COMMAND'] == Commands.packet_commands['request doctor']:
                         logging.info(">: Server received request to find available doctors.")
                         print('>: Server received request to find available doctors.')
                         doctors = self.database.request_doctors()
 
                         if doctors:
-                            self.message['COMMAND'] = Commands.RETURN_DOCTORS
+                            self.message['COMMAND'] = Commands.packet_commands['return doctor']
                             self.message['CLIENT'] = ServerCommands.find_user(self.connected_users, client)
                             self.message['DATA'] = doctors
 
@@ -100,40 +123,40 @@ class Server:
 
                             self.message = {'COMMAND': "", 'CLIENT': [], 'DATA': []}
 
-                    if message['COMMAND'] == Commands.REGISTER:
+                    if message['COMMAND'] == Commands.packet_commands['register']:
                         logging.info(">: Client requested to be registered to the database.")
 
                         if ServerCommands.register_user(message["DATA"], message['CLIENT'], self.database):
-                            self.message["COMMAND"] = Commands.COMMAND_COMPLETED
+                            self.message["COMMAND"] = Commands.packet_commands['complete']
 
                             client.send(json.dumps(self.message).encode())
 
-                    if message['COMMAND'] == Commands.REFERRAL:
+                    if message['COMMAND'] == Commands.packet_commands['referral']:
                         logging.info(">: Client requested a referral code from server.")
                         code = ServerCommands.generate_code(6)
 
-                        self.message["COMMAND"] = Commands.REFERRAL
+                        self.message["COMMAND"] = Commands.packet_commands['referral']
                         self.message["CLIENT"] = UserTypes.CLINICIAN
                         self.message["DATA"].append(code)
 
                         client.send(json.dumps(self.message).encode())
 
-                    if message['COMMAND'] == Commands.VALIDATE_REGISTER:
+                    if message['COMMAND'] == Commands.packet_commands['validate register']:
                         found_results = self.database.check_records(message)
                         logging.debug(found_results)
 
                         if found_results:
-                            self.message['COMMAND'] = Commands.COMMAND_FAILED
+                            self.message['COMMAND'] = Commands.packet_commands['fail']
                             logging.debug(self.message)
                             client.send(json.dumps(self.message).encode())
 
                         elif not found_results:
-                            self.message['COMMAND'] = Commands.COMMAND_PASSED
+                            self.message['COMMAND'] = Commands.packet_commands['pass']
                             logging.debug(self.message)
 
                             client.send(json.dumps(self.message).encode())
 
-                    if message['COMMAND'] == Commands.LOGIN:
+                    if message['COMMAND'] == Commands.packet_commands['login']:
                         logging.info(">: Server received request to validate login credentials.")
                         accept_login = ServerCommands.compare_login(message, self.database)
 
@@ -144,7 +167,7 @@ class Server:
                         if user_type is not None:
                             logging.info(f">: {accept_login[1]} is a {user_type}")
 
-                            self.message['COMMAND'] = Commands.COMMAND_ACCEPT
+                            self.message['COMMAND'] = Commands.packet_commands['accept']
                             self.message['CLIENT'] = user_id  # Set the client key to the user_id
                             self.message['DATA'] = [user_type, accept_login[1]]
 
@@ -155,7 +178,7 @@ class Server:
                             client.send(json.dumps(self.message).encode())
 
                         else:
-                            self.message['COMMAND'] = Commands.COMMAND_DENY
+                            self.message['COMMAND'] = Commands.packet_commands['deny']
                             self.message['CLIENT'] = None
                             self.message['DATA'] = []
 

@@ -40,17 +40,6 @@ tables = {
                     foreign key (Clinician_ID) references CLINICIAN (Clinician_ID)
 
         ''',
-    "SERVICES": '''
-
-              Service_ID        integer,
-              Booking_ID        integer,
-              Name              text,
-              Time              integer,
-
-              primary key (Service_ID)
-              foreign key (Booking_ID) references BOOKINGS (Booking_ID)
-
-        ''',
     "MEDICATIONS": '''
 
               Item_ID           integer,
@@ -69,7 +58,10 @@ tables = {
               Booking_ID        integer,
               Patient_ID        integer,
               Clinician_ID      integer,
-              Booking_Date      text,
+              Date              text,
+              Time              text,
+              Status            text,
+              
 
               primary key (Booking_ID)
               foreign key (Patient_ID) references PATIENT (Patient_ID)
@@ -114,6 +106,24 @@ class Database:  # Created a class for Database along with necessary attributes
 
         finally:
             self.conn.commit()
+
+    def find_doctor(self, user_data):
+        self.sql = '''SELECT Clinician_ID, First_Name, Last_Name from ClINICIAN where Clinician_ID=?'''
+        self.query(self.sql, user_data)
+
+        result = self.cursor.fetchone()
+        if result:
+            return result
+        return False
+
+    def find_patient(self, user_data):
+        self.sql = '''SELECT Patient_ID, First_Name, Last_Name from PATIENT where Patient_ID=?'''
+        self.query(self.sql, user_data)
+
+        result = self.cursor.fetchone()
+        if result:
+            return result
+        return False
 
     def request_doctors(self):
         print('>: Database is searching for available doctors')
@@ -200,18 +210,42 @@ class Database:  # Created a class for Database along with necessary attributes
             f">: {user}: {title} {first_name} {last_name} has been registered to the database successfully.")
         return True
 
+    def get_bookings(self):
+        self.sql = '''SELECT * FROM BOOKINGS'''
+        self.query(self.sql, None)
+
+        result = self.cursor.fetchall()
+        if result:
+            print(result)
+            return result
+
+    def create_booking(self, data):
+        self.sql = '''INSERT INTO BOOKINGS (Booking_ID, Patient_ID, Clinician_ID, Date, Time, Status)
+        VALUES (?, ?, ?, ?, ?, ?);'''
+
+        self.query_data = []
+
+        booking_id = self.generate_id()
+        patient_id = data['patient'][1][0]
+        doctor_id = data['doctor'][1][0]
+        date = data['date']
+        time = data['time']
+        status = 'Pending'
+
+        packet = (booking_id, patient_id, doctor_id, date, time, status)
+        print(f">: Database is storing booking info: {packet}")
+
+        self.query_data.extend(packet)
+        self.query(self.sql, self.query_data)
+        print(f">: Booking information successfully registered to database.")
+
+        return True
+
     def check_records(self, data):
         self.sql = " "
         print(f'Database received: {data}')
         patient_sql = '''SELECT Patient_ID, First_Name, Last_Name FROM PATIENT WHERE EMAIL=? AND Password=?'''
         doctor_sql = '''SELECT Patient_ID, First_Name, Last_Name FROM CLINICIAN WHERE EMAIL=? AND Password=?'''
-
-        # if data['CLIENT'] in {self.USER_ROLE_CLINICIAN, self.USER_ROLE_PATIENT}:
-        #     role = data['CLIENT']
-        #     self.sql = f"SELECT Email, Tel_No FROM {role} WHERE Email=? OR Tel_no=?"
-        #     self.cursor.execute(self.sql, (data['DATA'][3], data['DATA'][4]))
-        #
-        #     return bool(self.cursor.fetchone())
 
         if data['CLIENT']:
             if isinstance(data['CLIENT'], int):

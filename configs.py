@@ -1,17 +1,31 @@
 class Commands:
-    REGISTER = 'REGISTER'
-    LOGIN = 'LOGIN'
-    REFERRAL = 'REFERRAL'
-    VALIDATE_REGISTER = 'VALIDATE REGISTER'
-    COMMAND_REFERRAL = 'REFERRAL'
-    COMMAND_END = 'END'
-    COMMAND_COMPLETED = 'COMPLETED'
-    COMMAND_PASSED = 'PASSED'
-    COMMAND_FAILED = 'FAILED'
-    COMMAND_ACCEPT = 'ACCEPT'
-    COMMAND_DENY = 'DENY'
-    COMMAND_REQUEST_DOCTOR = 'R_DOCTOR'
-    RETURN_DOCTORS = 'RETURN_DOCTOR'
+
+    packet_commands = {
+        'register':             'REGISTER',
+        'login':                'LOGIN',
+        'referral':             'REFERRAL',
+        'validate register':    'VALIDATE REGISTER',
+        'end':                  'END',
+        'complete':             'COMPLETED',
+        'pass':                 'PASSED',
+        'fail':                 'FAILED',
+        'accept':               'ACCEPT',
+        'deny':                 'DENY',
+        'request_doctor':       'R_DOCTOR',
+        'return doctor':        'RETURN_DOCTOR',
+
+        'appointments': {
+            'create apt':           'CREATE APT',
+            'accept apt':           'ACCEPT APT',
+            'reject apt':           'DENY APT',
+            'update apt':           'UPDATE APT',
+        },
+
+        'notifications': {
+            'send patient': 'SEND PATIENT NOTIFICATION',
+            'send doctor':  'SEND DOCTOR NOTIFICATION',
+        },
+    }
 
     chat_commands = {
 

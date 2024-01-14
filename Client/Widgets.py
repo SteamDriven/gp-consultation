@@ -12,6 +12,8 @@ import threading
 import calendar
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+cmds = Commands.packet_commands
+appt_cdms = cmds['appointments']
 
 
 class Label(CTkFrame):
@@ -379,7 +381,7 @@ class Chat(CTkFrame):
             messages = self.client.receive_message()
             logging.info(f"Received message: {messages}")
 
-            if messages['COMMAND'] == Commands.chat_commands['receive']:
+            if messages['COMMAND'] == cmds.chat_commands['receive']:
                 self.create_client_message(messages['DATA'], '#e8ebfa', messages['CLIENT'][1])
 
     def start_message_listener(self):
@@ -429,7 +431,7 @@ class Chat(CTkFrame):
         user_id = self.user_data.user[1][0]
 
         logging.info(f"USER {user_id} is sending a message.")
-        ClientCommands.handle_chat(self.client, message, Commands.chat_commands['broadcast'], user_id)
+        ClientCommands.handle_chat(self.client, message, cmds.chat_commands['broadcast'], user_id)
         self.create_client_message(message, 'white', 'Test')
 
     def handle_ai_chat(self):
@@ -460,6 +462,19 @@ class Chat(CTkFrame):
 
                     self.create_service_message(f"{(self.ai_states[self.current_state])}")
                     self.disable_chat()
+
+                    logging.info(f"Sending USER: {self.user_data.user}'s appointment booking for processing.")
+
+                    ClientCommands.set_appointment(
+                        self.user_data.user[0],
+                        appt_cdms['create apt'],
+                        self.user_data
+                    )
+
+                    #  Send appointment information to the server
+                    #  Send notification to the patient
+                    #  Send notification request to the doctor
+                    #  Store apppointment in the database
             else:
                 self.create_service_message(f"{self.ai_states['confused']}")
             return

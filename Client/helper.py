@@ -9,11 +9,11 @@ import string
 class ClientCommands:
     @staticmethod
     def register(client, user_type, user_data):
-        return client.handle_server_messages(Commands.REGISTER, user_type, user_data)
+        return client.handle_server_messages(Commands.packet_commands['register'], user_type, user_data)
 
     @staticmethod
     def login(client, user_data):
-        return client.handle_server_messages(Commands.LOGIN, None, user_data)
+        return client.handle_server_messages(Commands.packet_commands['login'], None, user_data)
 
     @staticmethod
     def handle_chat(client, message, command, user):
@@ -23,7 +23,7 @@ class ClientCommands:
     @staticmethod
     def request_doctor(client):
         logging.info(f"Requesting available doctors from server.")
-        return client.handle_server_messages(command=Commands.COMMAND_REQUEST_DOCTOR, client=None, data=None)
+        return client.handle_server_messages(command=Commands.packet_commands['request doctor'], client=None, data=None)
 
     @staticmethod
     def handle_failed_login():
@@ -56,5 +56,10 @@ class ClientCommands:
             user_data['title'] = 'DR'
 
         return user_data
+
+    @staticmethod
+    def set_appointment(client, command, user_data):
+        print(">: Preparing info to setup appointment on server.")
+        client.handle_server_messages(command, client, user_data)
 
 

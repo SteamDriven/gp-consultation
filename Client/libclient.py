@@ -60,28 +60,31 @@ class Client:
         if receive:
             received = self.receive_message()
 
-            if received["COMMAND"] == Commands.COMMAND_REFERRAL:
+            if received["COMMAND"] == Commands.packet_commands['referral']:
                 return received["DATA"]
 
-            if received['COMMAND'] == Commands.RETURN_DOCTORS:
+            if received['COMMAND'] == Commands['notifications']['send note']:
+                logging.info("Sending notification notice to client.")
+
+            if received['COMMAND'] == Commands.packet_commands['return doctors']:
                 return received['DATA']
 
             if received['COMMAND'] == Commands.chat_commands['receive']:
                 logging.info(f"Message: {received['DATA']} received from USER: {received['CLIENT']}")
 
-            if received["COMMAND"] == Commands.COMMAND_END:
+            if received["COMMAND"] == Commands.packet_commands['end']:
                 self.handle_close()
 
-            if received["COMMAND"] == Commands.COMMAND_COMPLETED:
+            if received["COMMAND"] == Commands.packet_commands['complete']:
                 return 'CHANGE TO LOGIN'
 
-            if received['COMMAND'] == Commands.COMMAND_PASSED:
+            if received['COMMAND'] == Commands.packet_commands['pass']:
                 return 'ACCEPT'
 
-            if received['COMMAND'] == Commands.COMMAND_FAILED:
+            if received['COMMAND'] == Commands.packet_commands['fail']:
                 return 'DECLINE'
 
-            if received['COMMAND'] == Commands.COMMAND_ACCEPT:
+            if received['COMMAND'] == Commands.packet_commands['accept']:
                 logging.info('>: Login was accepted.')
 
                 if received['CLIENT']:
@@ -93,7 +96,7 @@ class Client:
                         logging.info('Changing to clinician dash.')
                         return ['CHANGE TO CLINICIAN DASH', received['DATA']]
 
-            if received['COMMAND'] == Commands.COMMAND_DENY:
+            if received['COMMAND'] == Commands.packet_commands['deny']:
                 logging.info('Login request was denied by server.')
                 return ['SHOW LOGIN WARNING', False]
 
