@@ -1,10 +1,11 @@
 import random
 from tkinter import *
 from customtkinter import *
+from os.path import *
 from functools import partial
 from PIL import Image
 from datetime import datetime
-from configs import Commands, UserTypes
+from configs import Commands
 from helper import ClientCommands
 
 import logging
@@ -209,12 +210,14 @@ class MessageBox(CTkFrame):
 
 
 class Treeview(CTkFrame):
-    def __init__(self, master=None, client=None, **kwargs):
+    def __init__(self, master=None, client=None, headers=None, **kwargs):
         super().__init__(master, **kwargs)
 
+        if headers is None:
+            headers = [None]
         self.configure(fg_color='#e7e5e5', corner_radius=5)
         self.client = client
-        self.header_list = ['Id', 'First Name', 'Last Name']
+        self.header_list = headers
         self.selected_doctor = None
         self.header_frame = None
         self.header = None
@@ -388,6 +391,9 @@ class Chat(CTkFrame):
         logging.info(f"Creating message listener.")
         threading.Thread(target=self.listen_for_messages).start()
 
+    def send_notifications(self):
+        pass
+
     def setup_chat(self):
         self.container = CTkFrame(self, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
         self.label = Label(self.container, text=self.title)
@@ -461,7 +467,7 @@ class Chat(CTkFrame):
                                                                                               self.user_data.doctor[1][
                                                                                               1:]).title())
 
-                    self.create_service_message(f"{(self.ai_states[self.current_state])}")
+                    self.create_service_message(f"{(self.ai_states['completed'])}")
                     self.disable_chat()
 
                     logging.info(f"Sending USER: {self.user_data.user}'s appointment booking for processing.")
@@ -471,24 +477,18 @@ class Chat(CTkFrame):
 
                     data_dict = self.user_data.to_dict()
 
-                    notification = ClientCommands.set_appointment(
+                    received_update = ClientCommands.set_appointment(
                         self.client,
                         self.user_data.user[0],
                         appt_cdms['create apt'],
                         data_dict
                     )
 
-                    if notification:
-                        if self.user_data.user[0] == UserTypes.CLINICIAN:
-                            self.user_data.patients = notification[1]
+                    if received_update:
+                        logging.info(f'Received notification: {received_update}')
 
-                            print(f"Creating a DOCTOR notification with the message: {notification[2]}")
-
-                        elif self.user_data.user[0] == UserTypes.PATIENT:
-                            print(f"Creating a PATIENT notification with the message: {notification[1]}")
-
-                self.create_service_message(f"{self.ai_states['confused']}")
-            return
+            self.create_service_message(f"{self.ai_states['confused']}")
+        # return
 
         if self.current_state == 'greeting':
             self.user_data.symptoms = message
@@ -512,8 +512,9 @@ class Chat(CTkFrame):
 
         if self.current_state == 'accepted':
             if "yes" in message.lower():
+
                 self.create_service_message(f"{(self.ai_states[self.current_state])}")
-                self.doctor_list = Treeview(self.left_frame, self.client)
+                self.doctor_list = Treeview(self.left_frame, self.client, ['ID', 'First Name', 'Last Name'])
                 self.doctor_list.pack(side='top', pady=10, padx=40, anchor=W)
 
                 done = CTkButton(self.left_frame, text='Done', text_color='white', fg_color='#7b96d4',
@@ -528,6 +529,20 @@ class Chat(CTkFrame):
 
                 if self.upload_frame:
                     self.user_data.images = self.upload_frame.images
+
+                    logging.info(f"Sending USER: {self.user_data.user}'s appointment booking for processing.\n"
+                                 f"Their assigned doctor is: {self.user_data.doctor}. Assigning random.")
+
+                    print(f"{self.user_data.user}'s is the USER who has requested a booking.")
+
+                    data_dict = self.user_data.to_dict()
+
+                    ClientCommands.set_appointment(
+                        self.client,
+                        self.user_data.user[0],
+                        appt_cdms['create apt'],
+                        data_dict
+                    )
 
             else:
                 self.create_service_message(f"{self.ai_states['confused']}")
@@ -925,8 +940,87 @@ class ImageButton(CTkFrame):
         self.btn.grid(row=0, column=1, columnspan=2, sticky='ew')
 
 
-class Notification(CTkFrame):
-    def __init__(self, master=None, message='LOADING', **kwargs):
+class Notification_Box(CTkFrame):
+    def __init__(self, master=None, message='None', header='service', status=None, timestamp=None, delete=None,
+                 **kwargs):
         super().__init__(master, **kwargs)
 
-        pass
+        self.configure(fg_color='white')
+        self.headers = {
+
+            'system': ['System', '#7ed957'],
+            'doctor': ['Doctor', '#8c52ff'],
+            'patient': ['Patient', '#ff914d']
+        }
+
+        self.type = self.headers[header]
+
+        self.header = None
+        self.title = None
+        self.identifier = ClientCommands.generate_id()
+        self.message = message
+        self.delete_func = delete
+        self.message_label = None
+        self.time = timestamp
+        self.status_label = None
+        self.status = status
+        self.exit_btn = None
+        self.separator = None
+        self.left_frame = None
+        self.right_frame = None
+        self.timestamp_frame = None
+        self.clock = None
+        self.timestamp = None
+        self.header_frame = None
+
+        self.exit_image_path = join(dirname(__file__), "Images/Exit.PNG")
+        self.clock_image_path = join(dirname(__file__), "Images/Clock.PNG")
+        self.exit_ck = CTkImage(Image.open(self.exit_image_path), size=(40, 40))
+        self.clock_ck = CTkImage(Image.open(self.clock_image_path), size=(40, 39))
+
+        self.font_1 = CTkFont('Arial', 20, 'bold')
+        self.font_2 = CTkFont('Arial', 14, 'normal')
+        self.font_3 = CTkFont('Arial', 14, 'bold')
+
+        self.setup()
+        self.create()
+
+    def setup(self):
+        self.left_frame = CTkFrame(self, fg_color='white', corner_radius=0)
+        self.right_frame = CTkFrame(self, fg_color='white', corner_radius=0)
+        self.exit_btn = CTkButton(self.left_frame, image=self.exit_ck, hover=False, fg_color='white',
+                                  text='', height=10, width=10, command=self.delete_notification)
+
+        self.header_frame = CTkFrame(self.right_frame, fg_color='white')
+        self.header = CTkLabel(self.header_frame, text_color='white', text=self.type[0],
+                               fg_color=self.type[1], font=self.font_1, justify='left', corner_radius=5)
+        self.timestamp_frame = CTkFrame(self.header_frame, fg_color='white')
+        self.clock = CTkLabel(self.timestamp_frame, image=self.clock_ck, fg_color='green', text='')
+        self.timestamp = CTkLabel(self.timestamp_frame, text=self.time, text_color='#e7e5e5', font=self.font_3)
+
+        self.title = CTkLabel(self.right_frame, text=self.message[0], text_color='#737373', font=self.font_1)
+        self.message_label = CTkLabel(self.right_frame, text=self.message[1], text_color='#737373', justify='left',
+                                      font=self.font_2)
+        self.status = CTkLabel(self.right_frame, text=f'Status: {self.status}', text_color='#ff5757', font=self.font_3)
+        self.separator = CTkFrame(self, fg_color='#e7e5e5', height=8, corner_radius=10)
+
+    def create(self):
+        self.left_frame.pack(side='left', padx=(2, 15), pady=5, fill='both', expand=True, ipadx=10)
+        self.right_frame.pack(padx=5, pady=5, fill='both', expand=True, ipadx=280)
+
+        self.exit_btn.pack(side='top', anchor=W)
+        self.header_frame.pack(padx=10, pady=(10, 0), anchor=W, fill='x', expand=True)
+
+        self.header.pack(side='left', padx=10, anchor=W, ipadx=20)
+        self.timestamp_frame.pack(side='right', padx=10, anchor=E)
+        self.clock.pack(side='left', pady=5)
+        self.timestamp.pack(side='left', padx=2, pady=10)
+
+        self.title.pack(padx=10, anchor=W)
+        self.message_label.pack(padx=10, anchor=W)
+        self.status.pack(padx=10, anchor=W)
+        self.separator.pack(side='bottom', padx=5, pady=5, fill='x', expand=True)
+
+    def delete_notification(self):
+        self.delete_func(self.identifier)
+        self.destroy()

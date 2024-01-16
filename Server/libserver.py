@@ -2,6 +2,7 @@ from database import *
 from configs import UserTypes, Commands
 from helper import *
 from methods import *
+from datetime import *
 
 import socket
 import json
@@ -45,6 +46,21 @@ class Server:
             self.server_socket.close()
             print(f">: [SERVER]: Binding to socket on HOST: {self.host} has been severed!")
 
+    def choose_random_doctor(self):
+        doctors = self.database.request_doctors()
+        available = []
+
+        if doctors:
+            for doctor in doctors:
+                available.append(doctor)
+
+        return random.choice(available)
+
+    def get_connected_user(self, user):
+        for key, user in self.connected_users.items():
+            if user == user:
+                return key
+
     def handle_messages_from_client(self, client):
         """
             Handle client requests and return information back.
@@ -64,28 +80,53 @@ class Server:
                 else:
                     message = json.loads(data.decode())
 
+                    if message['COMMAND'] == Commands.packet_commands['notifications']['search']:
+                        user_id = ServerCommands.find_user(self.connected_users, client)
+                        logging.info(f"Received USER: {user_id}'s request for new notifications. Searching...")
+
+                        notifications = self.database.return_notifications(user_id)
+                        if notifications is not None:
+                            logging.info(f"Received USER: {user_id}'s notifications. They have {len(notifications)}"
+                                         f"new notifications.")
+
+                            self.message['COMMAND'] = Commands.packet_commands['notifications']['send']
+                            self.message['CLIENT'] = user_id
+                            self.message['DATA'] = notifications
+
+                            client.send(json.dumps(self.message).encode())
+                            logging.debug("Sending client their notifications...")
+
                     if message['COMMAND'] == Commands.packet_commands['appointments']['create apt']:
                         logging.info(f">: Received {message['CLIENT']}'s booking data. Registering to database.")
 
                         user_data = PatientData().from_dict(message['DATA'])
 
-                        doctor_to_assign = message['DATA']['assigned_doctor']
                         patient_to_assign = message['DATA']['user']
+
+                        doctor_to_assign = message['DATA']['assigned_doctor']
+
+                        if doctor_to_assign is None:
+                            doctor_to_assign = self.choose_random_doctor()
+                            logging.info(f'Assigned random available doctor: {doctor_to_assign} to user:'
+                                         f'{patient_to_assign}')
+
                         date_of_appt = message['DATA']['selected_day']
                         time_of_appt = message['DATA']['selected_time']
                         symptoms = message['DATA']['symptoms']
                         images = message['DATA']['images']
 
                         doctor_id = doctor_to_assign[1][0]
+                        doctor_name = ' '.join(doctor_to_assign[1][1:]).title()
                         patient_id = patient_to_assign[1][0]
+                        patient_name = ' '.join(patient_to_assign[1][1:]).title()
+
+                        print(doctor_name, patient_name)
 
                         data_packet = {
                             'doctor': doctor_id,
                             'patient': patient_id,
                             'date': date_of_appt,
                             'time': time_of_appt,
-                            'd_not': 0,  # To indicate by default that both the doctor and client are not connected.
-                            'c_not': 0
                         }
 
                         booking = self.database.create_booking(data_packet)
@@ -98,49 +139,38 @@ class Server:
                                          f"to current appointments")
 
                             doctor_message = (f"You have been requested for an appointment by Patient: "
-                                              f"{patient_to_assign}\n"
-                                              f"The time of the appointment is: {time_of_appt} and the date\n"
+                                              f"{patient_name}"
+                                              f"The time of the appointment is: {time_of_appt}\n and the date"
                                               f"is: {date_of_appt}.")
 
                             patient_message = (f"You have scheduled a request for an appointment with DR"
-                                               f"{doctor_to_assign}\n"
+                                               f"{doctor_name}."
                                                f"The appointment is set for {date_of_appt} at {time_of_appt}.\n"
                                                f"You will receive a confirmation upon acceptance of your appointment.")
 
-                            # Now attempt to send a notification separately to both the doctor and client.
-                            # If either party is not currently connected, don't adjust database.
-                            for identifier, user in self.connected_users.items():
-                                if int(doctor_id) == identifier:
-                                    self.message['COMMAND'] = Commands.packet_commands['notifications']['send doctor']
-                                    self.message['CLIENT'] = doctor_id
-                                    self.message['DATA'] = [UserTypes.CLINICIAN, patient_id, doctor_message]
+                            status = 'Pending'
+                            current_timestamp = ServerCommands.format_time()
 
-                                    self.database.sql = '''UPDATE BOOKINGS SET D_NOT = 1 WHERE Booking_ID = ?'''
-                                    self.database.query(self.database.sql, (booking,))
-                                    logging.info(f"Bookings has been updated, as DR {doctor_to_assign} is online to "
-                                                 "receive notification.")
+                            doctor_notification = {
+                                'user': doctor_id,
+                                'message': [f'New Booking: Dr {doctor_name}', doctor_message],
+                                'time': current_timestamp,
+                                'status': status,
+                                'service': 'patient',
+                                'received': False
+                            }
 
-                                    user.send(json.dumps(self.message).encode())
-                                    logging.info(f"Notification has been sent to DR: {doctor_to_assign}.")
-                                else:
-                                    logging.info(f"DR {doctor_to_assign} is not online, notification will be sent"
-                                                 f"at their next available convenience.")
+                            patient_notification = {
+                                'user': patient_id,
+                                'message': [f'New Booking: {patient_name}', patient_message],
+                                'time': current_timestamp,
+                                'status': status,
+                                'service': 'system',
+                                'received': False
+                            }
 
-                                if patient_id == identifier:
-                                    self.message['COMMAND'] = Commands.packet_commands['notifications']['send patient']
-                                    self.message['CLIENT'] = patient_id
-                                    self.message['DATA'] = [UserTypes.PATIENT, patient_message]
-
-                                    self.database.sql = '''UPDATE BOOKINGS SET C_NOT = 1 WHERE Booking_ID = ?'''
-                                    self.database.query(self.database.sql, (booking,))
-                                    logging.info(f"Bookings has been updated, as PATIENT {patient_to_assign} is online "
-                                                 "to receive notification.")
-
-                                    user.send(json.dumps(self.message).encode())
-                                    logging.info(f"Notification has been sent to PATIENT: {patient_to_assign}.")
-                                else:
-                                    logging.info(f"PATIENT {patient_to_assign} is not online, notification will be sent"
-                                                 f"at their next available convenience.")
+                            self.database.store_notification(doctor_notification)
+                            self.database.store_notification(patient_notification)
 
                     if message['COMMAND'] == Commands.packet_commands['request doctor']:
                         logging.info(">: Server received request to find available doctors.")
@@ -212,12 +242,15 @@ class Server:
                         logging.info(">: Server received request to validate login credentials.")
                         accept_login = ServerCommands.compare_login(message, self.database)
 
+                        print(accept_login)
+
                         user_type = users[accept_login[0]]
-                        user_id = accept_login[1][0]
+                        # user_id = users[accept_login[1][0]]
                         logging.debug(f"User: {accept_login}")
 
                         if user_type is not None:
                             logging.info(f">: {accept_login[1]} is a {user_type}")
+                            user_id = accept_login[1][0]
 
                             self.message['COMMAND'] = Commands.packet_commands['accept']
                             self.message['CLIENT'] = user_id  # Set the client key to the user_id

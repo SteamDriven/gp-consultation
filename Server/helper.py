@@ -3,16 +3,17 @@ import random
 import string
 
 from configs import Commands
+from datetime import *
 
 
 class ServerCommands:
     @staticmethod
     def get_referral(client):
-        return client.handle_server_messages(Commands.REFERRAL, None, None)
+        return client.handle_server_messages(Commands.packet_commands['referral'], None, None)
 
     @staticmethod
     def validate_register(user_type, data, client):
-        return client.handle_server_messages(Commands.VALIDATE_REGISTER, user_type, data)
+        return client.handle_server_messages(Commands.packet_commands['validate register'], user_type, data)
 
     @staticmethod
     def generate_code(size):
@@ -45,6 +46,12 @@ class ServerCommands:
                    bool: True if registration is successful, False otherwise.
                """
         return db.register_user(data, user)
+
+    @staticmethod
+    def format_time():
+        now = datetime.now()
+        formatted_time = now.strftime('%d %b %Y at %I:%M %p')
+        return formatted_time
 
     @staticmethod
     def compare_login(data, db):

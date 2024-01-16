@@ -12,7 +12,7 @@ from methods import *
 from helper import ClientCommands
 from configs import *
 
-port = 50000
+client_port = 50000
 
 
 class App(ctk.CTk):
@@ -31,6 +31,7 @@ class App(ctk.CTk):
         self.user_data = None
 
         self.pages_list = {
+            # 'dashboard': PatientDashboard,
             "login": Login,
         }
 
@@ -47,6 +48,10 @@ class App(ctk.CTk):
 
     def create_pages(self):
         for key, value in self.pages_list.items():
+            # if key == 'dashboard':
+            #     self.frames[key] = value(self.container, self, self.user_data, self.client)
+            #
+            # else:
             self.frames[key] = value(self.container, self)
 
         # Using the method mentioned later in the class to display a specific frame upon opening
@@ -58,6 +63,7 @@ class App(ctk.CTk):
 
         try:
             for f in self.frames.values():
+                print(f)
                 f.pack_forget()
 
             frame.pack(side="top", fill="both", expand=True)
@@ -141,5 +147,5 @@ class App(ctk.CTk):
             ClientCommands.register(self.client, UserTypes.PATIENT, patient_data)
 
 
-app_client = Client('localhost', port)
+app_client = Client('localhost', client_port)
 my_app = App('Test_App', (1920, 1080), app_client)

@@ -63,11 +63,14 @@ class Client:
             if received["COMMAND"] == Commands.packet_commands['referral']:
                 return received["DATA"]
 
-            if received['COMMAND'] == Commands.packet_commands['notifications']['send doctor']:
+            if received['COMMAND'] == Commands.packet_commands['notifications']['send']:
                 return received['DATA']
 
-            if received['COMMAND'] == Commands.packet_commands['notifications']['send patient']:
-                return received['DATA']
+            # if received['COMMAND'] == Commands.packet_commands['notifications']['send doctor']:
+            #     return received['DATA']
+            #
+            # if received['COMMAND'] == Commands.packet_commands['notifications']['send patient']:
+            #     return received['DATA']
 
             if received['COMMAND'] == Commands.packet_commands['return doctor']:
                 return received['DATA']

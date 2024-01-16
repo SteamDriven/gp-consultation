@@ -10,6 +10,8 @@ from Client.Widgets import ImageButton
 
 from os.path import *
 
+from Client.libclient import Client
+
 
 class Dashboard(CTkFrame):
 
@@ -24,6 +26,7 @@ class Dashboard(CTkFrame):
         self.client = client
 
         self.username = ' '.join(self.user_data.user[1][1:]).title()
+        # self.username = None
 
         self.logo_image_path = join(dirname(__file__), "../../Images/Logo_Bluebg.png")
 
@@ -127,7 +130,10 @@ class PatientDashboard(Dashboard):
 
         self.configure_menu()
         for key, value in self.pages_list.items():
+
             self.frames[key] = value(self.main_frame, self, self.user_data)
+
+        self.show_frame('appointments')
 
     def show_frame(self, cont: str):
         frame = self.frames[cont]
@@ -135,11 +141,15 @@ class PatientDashboard(Dashboard):
 
         try:
             for f in self.frames.values():
+                print(f)
                 f.pack_forget()
 
             if cont == 'chat_room':
                 frame.create()
                 frame.place()
+
+            if cont == 'notifications':
+                frame.update_notifications()
 
             frame.pack(side="top", fill="both", expand=True)
             frame.tkraise()
@@ -170,3 +180,87 @@ class DoctorDashboard(Dashboard):
         super().__init__(parent, controller, user_data, client)
 
         print(f"{self.__class__.__name__} successfully initialised.")
+
+        self.client = client
+        self.user_data = user_data
+        self.frames = {}
+        self.pages_list = {
+
+            "chat room": ChatRoom,
+            'appointments': Appointments,
+            'notifications': Notifications,
+        }
+
+        self.buttons = {
+            'Appointments': {
+                "path": f'{join(dirname(__file__), "../../Images/Appointments.PNG")}',
+                "size": (56, 60),
+                "command": None
+            },
+            'Profile': {
+                "path": f'{join(dirname(__file__), "../../Images/Profile.PNG")}',
+                "size": (55, 57),
+                "command": None
+            },
+            'Patients': {
+                "path": f'{join(dirname(__file__), "../../Images/Patient.PNG")}',
+                "size": (59, 56),
+                "command": None
+            },
+            'Notifications': {
+                "path": f'{join(dirname(__file__), "../../Images/Notifications.PNG")}',
+                "size": (58, 58),
+                "command": lambda: self.show_frame("notifications")
+            },
+            'Chat': {
+                "path": f'{join(dirname(__file__), "../../Images/Chat.PNG")}',
+                "size": (67, 52),
+                "command": lambda: self.show_frame('chat room')
+            },
+        }
+
+        self.dash_btn.configure(command=lambda: self.show_frame('dashboard'))
+
+        self.configure_menu()
+        for key, value in self.pages_list.items():
+            self.frames[key] = value(self.main_frame, self, self.user_data)
+
+        self.show_frame('appointments')
+
+    def show_frame(self, cont: str):
+        frame = self.frames[cont]
+        print('Displaying frame:', cont)
+
+        try:
+            for f in self.frames.values():
+                print(f)
+                f.pack_forget()
+
+            if cont == 'chat_room':
+                frame.create()
+                frame.place()
+
+            if cont == 'notifications':
+                frame.update_notifications()
+
+            frame.pack(side="top", fill="both", expand=True)
+            frame.tkraise()
+
+        except Exception as e:
+            print(f"Error in show_frame: {e}")
+
+    def configure_menu(self):
+        self.buttons_frame.grid_columnconfigure(0, weight=0)
+        self.buttons_frame.grid_rowconfigure((0, 1, 2, 3, 4), weight=0)
+        print('configuring menu for loading buttons')
+
+        for label, info in self.buttons.items():
+            print("\nButton Type:", label)
+
+            button = ImageButton(self.buttons_frame,
+                                 label,
+                                 info['path'],
+                                 info['size'],
+                                 command=info['command'])
+
+            button.pack(pady=30, anchor=W)

@@ -1,7 +1,10 @@
+import json
 import sqlite3
 import logging
 import random
 import hashlib
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 tables = {
     "CLINICIAN": '''
@@ -61,15 +64,23 @@ tables = {
               Date              text,
               Time              text,
               Status            text,
-              D_Not             integer,
-              C_Not             integer,
               
-
               primary key (Booking_ID)
               foreign key (Patient_ID) references PATIENT (Patient_ID)
               foreign key (Clinician_ID) references CLINICIAN (Clinician_ID)
 
         ''',
+    "NOTIFICATIONS": '''
+    
+            User_ID             integer,
+            Message             text,
+            Time                text,
+            Status              text,
+            Service             text,
+            Received            integer,
+            
+            primary key (User_ID)
+    ''',
     "PRESCRIPTIONS": '''
 
               Prescription_ID   integer,
@@ -117,6 +128,31 @@ class Database:  # Created a class for Database along with necessary attributes
         if result:
             return result
         return False
+
+    def return_notifications(self, user_id):
+        self.sql = '''SELECT * FROM NOTIFICATIONS WHERE User_ID = ?'''
+        self.query(self.sql, (user_id, ))
+
+        result = self.cursor.fetchall()
+        if result:
+            return result
+        else:
+            return None
+
+    def store_notification(self, notification):
+        self.sql = '''INSERT into NOTIFICATIONS(User_ID, Message, Time, Status, Service, Received) 
+        VALUES(?, ?, ?, ?, ?, ?)'''
+
+        user = notification['user']
+        message = json.dumps(notification['message'])
+        time = notification['time']
+        status = notification['status']
+        service = notification['service']
+        received = notification['received']
+
+        packet = (user, message, time, status, service, received)
+        self.query(self.sql, packet)
+        logging.info(f"Database has successfully stored User: {user}'s notification message.")
 
     def find_patient(self, user_data):
         self.sql = '''SELECT Patient_ID, First_Name, Last_Name from PATIENT where Patient_ID=?'''
@@ -222,8 +258,8 @@ class Database:  # Created a class for Database along with necessary attributes
             return result
 
     def create_booking(self, data):
-        self.sql = '''INSERT INTO BOOKINGS (Booking_ID, Patient_ID, Clinician_ID, Date, Time, Status, D_Not, C_Not)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?);'''
+        self.sql = '''INSERT INTO BOOKINGS (Booking_ID, Patient_ID, Clinician_ID, Date, Time, Status)
+        VALUES (?, ?, ?, ?, ?, ?);'''
 
         self.query_data = []
 
@@ -233,10 +269,8 @@ class Database:  # Created a class for Database along with necessary attributes
         date = data['date']
         time = data['time']
         status = 'Pending'
-        d_not = data['d_not']
-        c_not = data['c_not']
 
-        packet = (booking_id, patient_id, doctor_id, date, time, status, d_not, c_not)
+        packet = (booking_id, patient_id, doctor_id, date, time, status)
         print(f">: Database is storing booking info: {packet}")
 
         self.query(self.sql, packet)
@@ -270,10 +304,10 @@ class Database:  # Created a class for Database along with necessary attributes
 
             for role in [self.USER_ROLE_CLINICIAN, self.USER_ROLE_PATIENT]:
                 self.sql = f'''SELECT Email, Password FROM {role} WHERE Email=? AND Password=?'''
-                self.cursor.execute(self.sql, [email, password])
+                self.query(self.sql, (email, password,))
 
                 if self.cursor.fetchone():
-                    logging.info(f"User is a {role}")
+                    logging.debug(f"User is a {role}")
 
                     if role == self.USER_ROLE_PATIENT:
                         self.sql = patient_sql
@@ -281,7 +315,7 @@ class Database:  # Created a class for Database along with necessary attributes
                     elif role == self.USER_ROLE_CLINICIAN:
                         self.sql = doctor_sql
 
-                    self.cursor.execute(self.sql, [email, password])
+                    self.query(self.sql, (email, password, ))
                     return [1 if role == self.USER_ROLE_PATIENT else 2, self.cursor.fetchone()]
 
             logging.debug('User is not a CLINICIAN or PATIENT')

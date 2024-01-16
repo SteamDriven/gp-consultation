@@ -88,12 +88,12 @@ class RequestAppointments(CTkFrame):
 
     def create(self):
         self.title = CTkLabel(self, text='Request new appointment', text_color='Black',
-                                  font=('Arial Bold', 35))
+                              font=('Arial Bold', 35))
         self.date_entry = Calendar(self)
         self.time_frame = CTkFrame(self, fg_color='white', corner_radius=0)
         self.confirm = CTkButton(self, fg_color='#b1c9eb', corner_radius=2, text='Confirm Booking',
-                                     font=('Arial Bold', 25), text_color='white', hover_color='#7c99c4',
-                                     command=lambda: self.update_time())
+                                 font=('Arial Bold', 25), text_color='white', hover_color='#7c99c4',
+                                 command=lambda: self.update_time())
 
     def place(self):
         self.title.pack(pady=(80, 5), padx=30, anchor=W)

@@ -21,9 +21,23 @@ class ClientCommands:
         client.send_chat_message(message, command, user)
 
     @staticmethod
+    def update_notes(command, client):
+        return client.handle_server_messages(command, None, None)
+
+    @staticmethod
     def request_doctor(client):
         logging.info(f"Requesting available doctors from server.")
         return client.handle_server_messages(command=Commands.packet_commands['request doctor'], client=None, data=None)
+
+    @staticmethod
+    def generate_id():
+        """
+           Generate a unique user ID.
+
+           Returns:
+               int: Unique user ID.
+        """
+        return random.randint(10000, 99999)
 
     @staticmethod
     def handle_failed_login():
@@ -60,6 +74,6 @@ class ClientCommands:
     @staticmethod
     def set_appointment(client, role, command, user_data):
         print(">: Preparing info to setup appointment on server.")
-        return client.handle_server_messages(command, role, user_data)
+        client.handle_server_messages(command, role, user_data, False)
 
 

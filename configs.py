@@ -30,6 +30,8 @@ class Commands:
         'notifications': {
             'send patient': 'SEND PATIENT NOTIFICATION',
             'send doctor':  'SEND DOCTOR NOTIFICATION',
+            'search':       'SEARCH FOR NOTIFICATIONS',
+            'send':         'SEND NOTIFICATION'
         },
     }
 
