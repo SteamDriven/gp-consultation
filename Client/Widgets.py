@@ -435,9 +435,10 @@ class Chat(CTkFrame):
     def send_message(self):
         message = self.get_message()
         user_id = self.user_data.user[1][0]
+        doctor_id = self.assigned_doctor[1][0]
 
         logging.info(f"USER {user_id} is sending a message.")
-        ClientCommands.handle_chat(self.client, message, cmds.chat_commands['broadcast'], user_id)
+        ClientCommands.handle_chat(self.client, message, cmds.chat_commands['broadcast'], sender, recepient)
         self.create_client_message(message, 'white', 'Test')
 
     def handle_ai_chat(self):
@@ -927,7 +928,9 @@ class ImageButton(CTkFrame):
         self.place_widgets()
 
     def setup_widgets(self):
+        print('oof1')
         image = Image.open(self.img_path)
+        print('oof2')
         image_ck = CTkImage(image, size=self.size)
 
         self.logo = CTkLabel(self, image=image_ck, text='')
@@ -942,7 +945,7 @@ class ImageButton(CTkFrame):
 
 class Notification_Box(CTkFrame):
     def __init__(self, master=None, message='None', header='service', status=None, timestamp=None, delete=None,
-                 **kwargs):
+                 change=None, identifier=None, **kwargs):
         super().__init__(master, **kwargs)
 
         self.configure(fg_color='white')
@@ -957,9 +960,10 @@ class Notification_Box(CTkFrame):
 
         self.header = None
         self.title = None
-        self.identifier = ClientCommands.generate_id()
+        self.identifier = identifier
         self.message = message
         self.delete_func = delete
+        self.change_func = change
         self.message_label = None
         self.time = timestamp
         self.status_label = None
@@ -973,6 +977,9 @@ class Notification_Box(CTkFrame):
         self.timestamp = None
         self.header_frame = None
 
+        self.patient_id = None
+        self.doctor_id = None
+
         self.exit_image_path = join(dirname(__file__), "Images/Exit.PNG")
         self.clock_image_path = join(dirname(__file__), "Images/Clock.PNG")
         self.exit_ck = CTkImage(Image.open(self.exit_image_path), size=(40, 40))
@@ -984,6 +991,13 @@ class Notification_Box(CTkFrame):
 
         self.setup()
         self.create()
+
+        if self.type[0] == 'patient':
+            self.patient_id = self.message[2]
+            self.bind('<Double-Button-1>', self.change_func(self.patient_id))
+
+        if self.type[0] == 'system':
+            self.doctor_id = self.message[2]
 
     def setup(self):
         self.left_frame = CTkFrame(self, fg_color='white', corner_radius=0)
@@ -1024,3 +1038,51 @@ class Notification_Box(CTkFrame):
     def delete_notification(self):
         self.delete_func(self.identifier)
         self.destroy()
+
+
+class Selector(CTkFrame):
+    def __init__(self, master=None, label=None, desc=None, times=None, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.configure(fg_color='white')
+
+        # Configs
+        self.label = label
+        self.description = desc
+        self.times = times
+
+        # Widgets
+        self.label_w = None
+        self.left_frame = None
+        self.right_frame = None
+        self.desc_w = None
+        self.times_options = None
+        self.separator = None
+
+        self.create_widgets()
+        self.setup_widgets()
+
+    def create_widgets(self):
+        self.left_frame = CTkFrame(self, fg_color='white')
+        self.right_frame = CTkFrame(self, fg_color='white')
+        self.label_w = CTkLabel(self.left_frame, text=self.label, text_color='black', font=('Arial Bold', 20),
+                                justify='left')
+        self.desc_w = CTkLabel(self.left_frame, text=self.description, text_color='#cecaca', font=('Arial light', 10))
+        self.times_options = CTkComboBox(self.right_frame, values=self.times, fg_color='white', border_color='black')
+        self.times_options.set(self.times[0])
+        self.separator = CTkFrame(self, fg_color='#e5e5e5', height=1)
+
+    def setup_widgets(self):
+        self.left_frame.pack(side='left', padx=10, pady=10)
+        self.right_frame.pack(side='right', padx=10, pady=10)
+        self.label_w.pack(side='top', padx=10, pady=(10, 0), anchor=W)
+        self.desc_w.pack(padx=10, pady=2, anchor=W)
+        self.times_options.pack(side='top', padx=10, pady=10, anchor=E)
+        self.separator.pack(side='bottom', padx=5, pady=10, anchor=CENTER)
+
+
+class TimeFrame(CTkFrame):
+    def __init__(self, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.container = None

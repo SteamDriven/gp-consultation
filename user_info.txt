@@ -1,0 +1,6 @@
+Doctors:
+1) Username: sixmstqx@example.com
+       Password: af4e6abb72566899c826aa88e53b7c09077b76f3032145a4e5b0c80fad090c33
+Patients:
+1) Username: wykbdhlo@example.com
+       Password: 9983dc3952a94d39dd7ff6168d8eeb5edaaa9455c1f4deec055195edda0a3e1f

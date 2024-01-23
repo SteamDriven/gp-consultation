@@ -13,6 +13,8 @@ class Commands:
         'deny':                 'DENY',
         'request doctor':       'R_DOCTOR',
         'return doctor':        'RETURN_DOCTOR',
+        'find p':               'FIND PATIENT',
+        'find b':               'FIND BOOKING',
 
         'page commands': {
             'change p':         'CHANGE TO PATIENT DASH',

@@ -80,6 +80,27 @@ class Server:
                 else:
                     message = json.loads(data.decode())
 
+                    if message['COMMAND'] == Commands.packet_commands['find b']:
+                        booking_info = self.database.find_booking(message['DATA'])
+
+                        self.message['COMMAND'] = Commands.packet_commands['find b']
+                        self.message['CLIENT'] = client
+                        self.message['DATA'] = booking_info
+
+                        if booking_info:
+                            client.send(json.dumps(booking_info).encode())
+
+                    if message['COMMAND'] == Commands.packet_commands['find p']:
+                        patient_info = self.database.find_patient(message['DATA'])
+
+                        if patient_info:
+                            self.message['COMMAND'] = Commands.packet_commands['find p']
+                            self.message['CLIENT'] = client
+                            self.message['DATA'] = patient_info
+
+                            client.send(json.dumps(self.message).encode())
+                            logging.info(f"Server sent PATIENT: {self.message['DATA']} info to client.")
+
                     if message['COMMAND'] == Commands.packet_commands['notifications']['search']:
                         user_id = ServerCommands.find_user(self.connected_users, client)
                         logging.info(f"Received USER: {user_id}'s request for new notifications. Searching...")
@@ -87,7 +108,7 @@ class Server:
                         notifications = self.database.return_notifications(user_id)
                         if notifications is not None:
                             logging.info(f"Received USER: {user_id}'s notifications. They have {len(notifications)}"
-                                         f"new notifications.")
+                                         f" new notifications.")
 
                             self.message['COMMAND'] = Commands.packet_commands['notifications']['send']
                             self.message['CLIENT'] = user_id
@@ -139,12 +160,12 @@ class Server:
                                          f"to current appointments")
 
                             doctor_message = (f"You have been requested for an appointment by Patient: "
-                                              f"{patient_name}"
+                                              f"{patient_name} {patient_id}"
                                               f"The time of the appointment is: {time_of_appt}\n and the date"
                                               f"is: {date_of_appt}.")
 
                             patient_message = (f"You have scheduled a request for an appointment with DR"
-                                               f"{doctor_name}."
+                                               f"{doctor_name} {doctor_id}."
                                                f"The appointment is set for {date_of_appt} at {time_of_appt}.\n"
                                                f"You will receive a confirmation upon acceptance of your appointment.")
 
@@ -152,21 +173,21 @@ class Server:
                             current_timestamp = ServerCommands.format_time()
 
                             doctor_notification = {
+                                'identifier': self.database.generate_code(5),
                                 'user': doctor_id,
                                 'message': [f'New Booking: Dr {doctor_name}', doctor_message],
                                 'time': current_timestamp,
                                 'status': status,
                                 'service': 'patient',
-                                'received': False
                             }
 
                             patient_notification = {
+                                'identifier': self.database.generate_code(5),
                                 'user': patient_id,
                                 'message': [f'New Booking: {patient_name}', patient_message],
                                 'time': current_timestamp,
                                 'status': status,
                                 'service': 'system',
-                                'received': False
                             }
 
                             self.database.store_notification(doctor_notification)
@@ -188,22 +209,23 @@ class Server:
                             self.message = {'COMMAND': "", 'CLIENT': [], 'DATA': []}
 
                     if message['COMMAND'] == Commands.chat_commands['broadcast']:
-                        logging.info(f">: User {message['CLIENT']} has said: {message['DATA']}")
+                        logging.info(f">: User {message['CLIENT']} has said: {message['DATA'][1]}")
 
                         for key, user_socket in self.connected_users.items():
                             if user_socket == self.connected_users[message['CLIENT']]:
                                 logging.debug(f"Skipping USER {key} cause it's matches Sender id.")
                                 continue
 
-                            logging.debug(f"Sending a message to USER: {key}")
-                            name = self.database.check_records(message)
-                            self.message['COMMAND'] = Commands.chat_commands['receive']
-                            self.message['CLIENT'] = [message['CLIENT'], name]
-                            self.message['DATA'] = message['DATA']
+                            if key == self.connected_users[message['DATA'][0]]:
+                                logging.debug(f"Sending a message to USER: {key}")
+                                name = self.database.check_records(message)
+                                self.message['COMMAND'] = Commands.chat_commands['receive']
+                                self.message['CLIENT'] = [message['CLIENT'], name]
+                                self.message['DATA'] = message['DATA'][1]
 
-                            user_socket.send(json.dumps(self.message).encode())
+                                user_socket.send(json.dumps(self.message).encode())
 
-                            self.message = {'COMMAND': "", 'CLIENT': [], 'DATA': []}
+                                self.message = {'COMMAND': "", 'CLIENT': [], 'DATA': []}
 
                     if message['COMMAND'] == Commands.packet_commands['register']:
                         logging.info(">: Client requested to be registered to the database.")
@@ -213,15 +235,15 @@ class Server:
 
                             client.send(json.dumps(self.message).encode())
 
-                    if message['COMMAND'] == Commands.packet_commands['referral']:
-                        logging.info(">: Client requested a referral code from server.")
-                        code = ServerCommands.generate_code(6)
-
-                        self.message["COMMAND"] = Commands.packet_commands['referral']
-                        self.message["CLIENT"] = UserTypes.CLINICIAN
-                        self.message["DATA"].append(code)
-
-                        client.send(json.dumps(self.message).encode())
+                    # if message['COMMAND'] == Commands.packet_commands['referral']:
+                    #     logging.info(">: Client requested a referral code from server.")
+                    #     code = ServerCommands.generate_code(6)
+                    #
+                    #     self.message["COMMAND"] = Commands.packet_commands['referral']
+                    #     self.message["CLIENT"] = UserTypes.CLINICIAN
+                    #     self.message["DATA"].append(code)
+                    #
+                    #     client.send(json.dumps(self.message).encode())
 
                     if message['COMMAND'] == Commands.packet_commands['validate register']:
                         found_results = self.database.check_records(message)

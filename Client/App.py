@@ -35,8 +35,8 @@ class App(ctk.CTk):
             "login": Login,
         }
 
-        # self.create_random_doctor(2)
-        # self.create_random_patient(2)
+        self.create_random_doctor(1)
+        self.create_random_patient(1)
 
         # Widgets
         self.container = ctk.CTkFrame(self)

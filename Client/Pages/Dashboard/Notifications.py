@@ -6,6 +6,7 @@ from customtkinter import *
 from configs import *
 
 from Client.Widgets import Notification_Box
+from Client.Pages.Dashboard.SelectTime import *
 from Client.helper import *
 
 
@@ -18,12 +19,12 @@ class Notifications(CTkFrame):
         self.configure(fg_color='white')
         self.title = None
         self.client = controller.client
+        self.controller = controller
         self.notifications = {}
         self.container = None
 
         self.create()
         self.place()
-        # self.create_placeholders()
 
     def update_notifications(self):
         notifications = ClientCommands.update_notes(Commands.packet_commands['notifications']['search'], self.client)
@@ -32,7 +33,8 @@ class Notifications(CTkFrame):
             print(f'You have {len(notifications)} new notification/s from the server. Displaying them now...')
 
             for notification in notifications:
-                print(notification)
+                if notification[0] in notifications:
+                    continue
                 self.create_notification(notification)
 
         else:
@@ -59,32 +61,30 @@ class Notifications(CTkFrame):
         self.notifications[placeholder.identifier] = placeholder
 
     def create_notification(self, message):
-        text = json.loads(message[1])
-        status = message[3]
-        header = message[4]
-        timestamp = message[2]
+        identifier = message[0]
+        text = json.loads(message[2])
+        status = message[4]
+        header = message[5]
+        timestamp = message[3]
 
         notification = Notification_Box(self.container, text, header, status, timestamp,
                                         self.clear_notification)
         notification.pack(side='top', padx=20, pady=10, anchor=W)
-        self.notifications[notification.identifier] = notification
+        self.notifications[identifier] = notification
         logging.info(f'Notification: {notification.identifier} has been added.')
+
+    def change_page(self, patient_id):
+        patient_name = self.client.handle_server_messages(Commands.packet_commands['find p'], None, patient_id)
+        time_of_day = self.client.handle_server_messages(Commands.packet_commands['find b'], None, patient_id)
+
+        frame = SelectTime(self.controller.main_frame, self.controller, time_of_day, patient_name)
+
+        for f in self.controller.frames.values():
+            f.pack_forget()
+
+        frame.pack(side="top", fill="both", expand=True)
+        frame.tkraise()
 
     def clear_notification(self, key):
         del self.notifications[key]
         logging.info(f'Notification: {key} has been removed.')
-
-    # def listen_for_notifications(self):
-    #     logging.info(f"Listening for notifications.")
-    #     while True:
-    #         messages = self.client.receive_message()
-    #         logging.info(f"Received message: {messages}")
-    #
-    #         if messages['COMMAND'] == Commands.packet_commands['notifications']['send patient']:
-    #             self.create_notification(messages['DATA'])
-    #         if messages['COMMAND'] == Commands.packet_commands['notifications']['send doctor']:
-    #             self.create_notification(messages['DATA'])
-    #
-    # def start_listening(self):
-    #     logging.info(f"Creating message listener.")
-    #     threading.Thread(target=self.listen_for_notifications).start()

@@ -1,11 +1,12 @@
 from tkinter import *
 from customtkinter import *
 
-from PIL import Image
+from PIL import Image as PILImage
 from Client.Pages.Dashboard.Chat import ChatRoom
 from Client.Pages.Dashboard.Appointments import *
 from Client.Pages.Dashboard.Symptoms import Symptoms
 from Client.Pages.Dashboard.Notifications import *
+from Client.Pages.Dashboard.SelectTime import *
 from Client.Widgets import ImageButton
 
 from os.path import *
@@ -26,7 +27,6 @@ class Dashboard(CTkFrame):
         self.client = client
 
         self.username = ' '.join(self.user_data.user[1][1:]).title()
-        # self.username = None
 
         self.logo_image_path = join(dirname(__file__), "../../Images/Logo_Bluebg.png")
 
@@ -55,8 +55,11 @@ class Dashboard(CTkFrame):
         self.place_widgets()
 
     def create_widgets(self):
-        original_logo_image = Image.open(self.logo_image_path)
+        print('oof')
+        original_logo_image = PILImage.open(self.logo_image_path)
+        print('oof2')
         logo_image_ck = CTkImage(original_logo_image, size=(96, 90))
+        print('oof3')
 
         self.title_bar = CTkFrame(self, fg_color='#4c6fbf', corner_radius=0, height=90)
         self.logo_image = CTkLabel(self.title_bar, image=logo_image_ck, text='')
@@ -130,7 +133,6 @@ class PatientDashboard(Dashboard):
 
         self.configure_menu()
         for key, value in self.pages_list.items():
-
             self.frames[key] = value(self.main_frame, self, self.user_data)
 
         self.show_frame('appointments')
@@ -144,7 +146,7 @@ class PatientDashboard(Dashboard):
                 print(f)
                 f.pack_forget()
 
-            if cont == 'chat_room':
+            if cont == 'chat room':
                 frame.create()
                 frame.place()
 
@@ -189,6 +191,7 @@ class DoctorDashboard(Dashboard):
             "chat room": ChatRoom,
             'appointments': Appointments,
             'notifications': Notifications,
+            # 'confirm apt': SelectTime,
         }
 
         self.buttons = {
@@ -219,7 +222,7 @@ class DoctorDashboard(Dashboard):
             },
         }
 
-        self.dash_btn.configure(command=lambda: self.show_frame('dashboard'))
+        # self.dash_btn.configure(command=lambda: self.show_frame('dashboard'))
 
         self.configure_menu()
         for key, value in self.pages_list.items():
@@ -233,10 +236,9 @@ class DoctorDashboard(Dashboard):
 
         try:
             for f in self.frames.values():
-                print(f)
                 f.pack_forget()
 
-            if cont == 'chat_room':
+            if cont == 'chat room':
                 frame.create()
                 frame.place()
 

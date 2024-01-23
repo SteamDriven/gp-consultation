@@ -1,3 +1,4 @@
+import json
 from tkinter import messagebox
 from configs import *
 
@@ -16,8 +17,10 @@ class ClientCommands:
         return client.handle_server_messages(Commands.packet_commands['login'], None, user_data)
 
     @staticmethod
-    def handle_chat(client, message, command, user):
+    def handle_chat(client, message, command, user, assigned):
         print(f">: User {user} has sent message: {message} with command: {command}")
+
+        message = [assigned, message]
         client.send_chat_message(message, command, user)
 
     @staticmethod

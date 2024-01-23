@@ -16,23 +16,6 @@ class ServerCommands:
         return client.handle_server_messages(Commands.packet_commands['validate register'], user_type, data)
 
     @staticmethod
-    def generate_code(size):
-        """
-            Generate an alphanumeric code of a given size.
-
-            Args:
-                size (int): Size of the code.
-
-            Returns:
-                str: Generated code.
-        """
-        length = size
-        chars = (string.ascii_uppercase + string.digits)
-        code = [random.choice(chars) for c in range(length)]
-
-        return ''.join(code)
-
-    @staticmethod
     def register_user(data, user, db):
         """
                Register a user in the database.
