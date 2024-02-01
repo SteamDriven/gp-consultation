@@ -992,15 +992,19 @@ class Notification_Box(CTkFrame):
         self.setup()
         self.create()
 
-        if self.type[0] == 'patient':
-            self.patient_id = self.message[2]
-            self.bind('<Double-Button-1>', self.change_func(self.patient_id))
+        if self.type[0] == 'Patient':
+            print('Notification type is PATIENT. Changing state.')
 
-        if self.type[0] == 'system':
+            self.patient_id = self.message[2]
+
+            if self.right_frame:
+                self.right_frame.bind('<Double-Button-1>', lambda event: self.change_func(self.patient_id))
+
+        if self.type[0] == 'System':
             self.doctor_id = self.message[2]
 
     def setup(self):
-        self.left_frame = CTkFrame(self, fg_color='white', corner_radius=0)
+        self.left_frame = CTkFrame(self, fg_color='white', corner_radius=0, width=10)
         self.right_frame = CTkFrame(self, fg_color='white', corner_radius=0)
         self.exit_btn = CTkButton(self.left_frame, image=self.exit_ck, hover=False, fg_color='white',
                                   text='', height=10, width=10, command=self.delete_notification)
@@ -1019,7 +1023,7 @@ class Notification_Box(CTkFrame):
         self.separator = CTkFrame(self, fg_color='#e7e5e5', height=8, corner_radius=10)
 
     def create(self):
-        self.left_frame.pack(side='left', padx=(2, 15), pady=5, fill='both', expand=True, ipadx=10)
+        self.left_frame.pack(side='left', padx=(2, 15), pady=5, fill='both', ipadx=10)
         self.right_frame.pack(padx=5, pady=5, fill='both', expand=True, ipadx=280)
 
         self.exit_btn.pack(side='top', anchor=W)
@@ -1062,23 +1066,27 @@ class Selector(CTkFrame):
         self.create_widgets()
         self.setup_widgets()
 
+    def get_time(self):
+        return self.times_options.get()
+
     def create_widgets(self):
         self.left_frame = CTkFrame(self, fg_color='white')
         self.right_frame = CTkFrame(self, fg_color='white')
-        self.label_w = CTkLabel(self.left_frame, text=self.label, text_color='black', font=('Arial Bold', 20),
+        self.label_w = CTkLabel(self.left_frame, text=self.label, text_color='black', font=('Arial Bold', 23),
                                 justify='left')
-        self.desc_w = CTkLabel(self.left_frame, text=self.description, text_color='#cecaca', font=('Arial light', 10))
-        self.times_options = CTkComboBox(self.right_frame, values=self.times, fg_color='white', border_color='black')
+        self.desc_w = CTkLabel(self.left_frame, text=self.description, text_color='#cecaca', font=('Arial light', 18))
+        self.times_options = CTkComboBox(self.right_frame, values=self.times, fg_color='white', border_color='black',
+                                         button_color='#cecaca', button_hover_color='#a2a1a1')
         self.times_options.set(self.times[0])
-        self.separator = CTkFrame(self, fg_color='#e5e5e5', height=1)
+        # self.separator = CTkFrame(self, fg_color='#e5e5e5', height=3)
 
     def setup_widgets(self):
-        self.left_frame.pack(side='left', padx=10, pady=10)
-        self.right_frame.pack(side='right', padx=10, pady=10)
+        self.left_frame.pack(side='left', padx=10, pady=10, fill='x', expand=True, ipadx=300)
+        self.right_frame.pack(side='right', padx=10, pady=10, fill='x', expand=True)
         self.label_w.pack(side='top', padx=10, pady=(10, 0), anchor=W)
-        self.desc_w.pack(padx=10, pady=2, anchor=W)
-        self.times_options.pack(side='top', padx=10, pady=10, anchor=E)
-        self.separator.pack(side='bottom', padx=5, pady=10, anchor=CENTER)
+        self.desc_w.pack(padx=10, anchor=W)
+        self.times_options.pack(side='top', padx=10, pady=10, anchor=E, ipadx=8)
+        # self.separator.pack(side='bottom', padx=5, pady=15, fill='x', expand=True)
 
 
 class TimeFrame(CTkFrame):

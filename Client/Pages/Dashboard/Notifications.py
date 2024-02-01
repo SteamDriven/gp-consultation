@@ -29,16 +29,17 @@ class Notifications(CTkFrame):
     def update_notifications(self):
         notifications = ClientCommands.update_notes(Commands.packet_commands['notifications']['search'], self.client)
 
-        if notifications:
-            print(f'You have {len(notifications)} new notification/s from the server. Displaying them now...')
-
+        if notifications is not None:
             for notification in notifications:
-                if notification[0] in notifications:
-                    continue
-                self.create_notification(notification)
+                print(notification[0])
 
+                if self.notifications.get(notification[0]) is None:
+                    print(f"{notification[0]} doesn't exist. Creating it now!")
+                    self.create_notification(notification)
+
+                continue
         else:
-            print(f'You have 0 new notification/s from the server. Look again later.')
+            print("No notifications. Try again later.")
 
     def create(self):
         print('Creating notifications title')
@@ -68,19 +69,25 @@ class Notifications(CTkFrame):
         timestamp = message[3]
 
         notification = Notification_Box(self.container, text, header, status, timestamp,
-                                        self.clear_notification)
-        notification.pack(side='top', padx=20, pady=10, anchor=W)
+                                        delete=self.clear_notification, change=self.change_page)
+
+        notification.pack(side='top', padx=20, pady=10, anchor=W, fill='x')
+
         self.notifications[identifier] = notification
         logging.info(f'Notification: {notification.identifier} has been added.')
 
     def change_page(self, patient_id):
         patient_name = self.client.handle_server_messages(Commands.packet_commands['find p'], None, patient_id)
-        time_of_day = self.client.handle_server_messages(Commands.packet_commands['find b'], None, patient_id)
+        booking = self.client.handle_server_messages(Commands.packet_commands['find b'], None, patient_id)
 
-        frame = SelectTime(self.controller.main_frame, self.controller, time_of_day, patient_name)
+        print(patient_name, booking)
+
+        frame = SelectTime(self.controller.main_frame, self.controller, booking, patient_name, self.client)
 
         for f in self.controller.frames.values():
             f.pack_forget()
+
+        print('Cleared pages, displaying time selection.')
 
         frame.pack(side="top", fill="both", expand=True)
         frame.tkraise()

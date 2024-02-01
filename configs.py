@@ -15,6 +15,7 @@ class Commands:
         'return doctor':        'RETURN_DOCTOR',
         'find p':               'FIND PATIENT',
         'find b':               'FIND BOOKING',
+        'update b':             'UPDATE BOOKING',
 
         'page commands': {
             'change p':         'CHANGE TO PATIENT DASH',

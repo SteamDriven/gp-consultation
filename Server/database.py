@@ -49,13 +49,13 @@ tables = {
     "MEDICATIONS": '''
 
               Item_ID           integer,
-              Booking_ID        integer,
+              Booking_Reference integer,
               Patient_ID        integer,
               Name              text,
               
 
               primary key (Item_ID)
-              foreign key (Booking_ID) references BOOKINGS (Booking_ID)
+              foreign key (Booking_Reference) references BOOKINGS (Booking_Reference)
               foreign key (Patient_ID) references PATIENT (Patient_ID)
 
         ''',
@@ -75,7 +75,7 @@ tables = {
         ''',
     "NOTIFICATIONS": '''
             
-            Notification_ID     integer,
+            Notification_ID     text,
             User_ID             integer,
             Message             text,
             Time                text,
@@ -127,7 +127,7 @@ class Database:  # Created a class for Database along with necessary attributes
 
     def find_doctor(self, user_data):
         self.sql = '''SELECT Clinician_ID, First_Name, Last_Name FROM ClINICIAN WHERE Clinician_ID=?'''
-        self.query(self.sql, user_data)
+        self.query(self.sql, (user_data,))
 
         result = self.cursor.fetchone()
         if result:
@@ -159,13 +159,15 @@ class Database:  # Created a class for Database along with necessary attributes
 
         try:
             self.query(self.sql, packet)
-            logging.info(f"Database has successfully stored User: {user}'s notification message.")
 
         except sqlite3.Error as err:
             logging.error(f"SQLite error: {err}")
             logging.error(f"Failed query: {self.sql}")
             logging.error(f"Parameters: {packet}")
             raise
+
+        finally:
+            logging.info(f"Database has successfully stored User: {user}'s notification message.")
 
     def find_patient(self, user_data):
         self.sql = '''SELECT Patient_ID, First_Name, Last_Name from PATIENT where Patient_ID=?'''
@@ -267,7 +269,7 @@ class Database:  # Created a class for Database along with necessary attributes
         tel_no = data['tel_no']
         postcode = data['postcode']
 
-        print(f"{data['password']} belongs to {title}:{first_name}{last_name}")
+        # print(f"{data['password']} belongs to {title}:{first_name}{last_name}")
         password = self.handle_password(data['password'])
 
         if title == 'DR':
@@ -297,15 +299,17 @@ class Database:  # Created a class for Database along with necessary attributes
         return True
 
     def find_booking(self, user_id):
+        print(user_id)
+
         self.sql = '''SELECT * FROM BOOKINGS WHERE CLINICIAN_ID = ?'''
-        self.query(self, (user_id,))
+        self.query(self.sql, (user_id,))
 
         result = self.cursor.fetchone()
 
         if not result:
             logging.info(f'{user_id} is not a CLINICIAN_ID, must be a PATIENT.')
             self.sql = '''SELECT * FROM BOOKINGS WHERE Patient_ID = ?'''
-            self.query(self, (user_id,))
+            self.query(self.sql, (user_id,))
 
             result = self.cursor.fetchone()
             return result
@@ -313,16 +317,27 @@ class Database:  # Created a class for Database along with necessary attributes
         logging.info(f'{user_id} is a Clinician, finding assigned patients.')
         return result
 
+    def update_booking(self, column, newValue, patient, status):
+        print(column, newValue, patient)
+        self.sql = f'''UPDATE BOOKINGS SET {column} = ?, {status[0]} = ? WHERE Patient_ID = ? '''
+
+        try:
+            self.query(self.sql, (newValue, status[1], patient,))
+            print('Booking record updated successfully')
+
+        except sqlite3.Error as error:
+            print(f"Failed to update sqlite table BOOKINGS: {error}")
+
     def get_booking_reference(self, patient_id, doctor_id):
-        self.sql = '''SELECT Booking_ID FROM BOOKINGS WHERE Clinician_ID = ? AND Patient_ID = ?'''
-        self.query(self, self.sql)
+        self.sql = '''SELECT Booking_Reference FROM BOOKINGS WHERE Clinician_ID = ? AND Patient_ID = ?'''
+        self.query(self.sql, (doctor_id, patient_id,))
 
         result = self.cursor.fetchone()
         if result:
             return result
 
     def create_booking(self, data):
-        self.sql = '''INSERT INTO BOOKINGS (Booking_ID, Patient_ID, Clinician_ID, Date, Time, Status)
+        self.sql = '''INSERT INTO BOOKINGS (Booking_Reference, Patient_ID, Clinician_ID, Date, Time, Status)
         VALUES (?, ?, ?, ?, ?, ?);'''
 
         self.query_data = []

@@ -235,21 +235,26 @@ class DoctorDashboard(Dashboard):
         print('Displaying frame:', cont)
 
         try:
-            for f in self.frames.values():
-                f.pack_forget()
+            if frame is not None:
+                for f in self.frames.values():
+                    f.pack_forget()
 
-            if cont == 'chat room':
-                frame.create()
-                frame.place()
+                if cont == 'chat room':
+                    frame.create()
+                    frame.place()
 
-            if cont == 'notifications':
-                frame.update_notifications()
+                if cont == 'notifications':
+                    frame.update_notifications()
 
-            frame.pack(side="top", fill="both", expand=True)
-            frame.tkraise()
+                frame.pack(side="top", fill="both", expand=True)
+                frame.tkraise()
+
+            else:
+                raise ValueError(f"Frame '{cont}' not found in self.frames.")
 
         except Exception as e:
             print(f"Error in show_frame: {e}")
+            raise
 
     def configure_menu(self):
         self.buttons_frame.grid_columnconfigure(0, weight=0)

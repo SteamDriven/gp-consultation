@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from tkinter import messagebox
 from configs import *
 
@@ -33,6 +34,17 @@ class ClientCommands:
         return client.handle_server_messages(command=Commands.packet_commands['request doctor'], client=None, data=None)
 
     @staticmethod
+    def update_booking(client, packet):
+        logging.info("Request to update bookings table.")
+        return client.handle_server_messages(command=Commands.packet_commands['update b'], client=None, data=packet,
+                                             receive=False)
+
+    @staticmethod
+    def send_patient_notification(client, packet):
+        client.handle_server_messages(command=Commands.packet_commands['notifications']['send patient'], client=None,
+                                      data=packet, receive=False)
+
+    @staticmethod
     def generate_id():
         """
            Generate a unique user ID.
@@ -41,6 +53,23 @@ class ClientCommands:
                int: Unique user ID.
         """
         return random.randint(10000, 99999)
+
+    @staticmethod
+    def format_time():
+        now = datetime.now()
+        formatted_time = now.strftime('%d %b %Y at %I:%M %p')
+        return formatted_time
+
+    @staticmethod
+    def convert_to_minutes(time_str):
+        # Convert a time string (e.g., '1:30') to minutes
+        time_str = time_str.replace(' AM', '').replace(' PM', '')
+        hours, minutes = map(int, time_str.split(':'))
+
+        if 'PM' in time_str:
+            hours += 12
+
+        return hours * 60 + minutes
 
     @staticmethod
     def handle_failed_login():
@@ -78,5 +107,3 @@ class ClientCommands:
     def set_appointment(client, role, command, user_data):
         print(">: Preparing info to setup appointment on server.")
         client.handle_server_messages(command, role, user_data, False)
-
-
