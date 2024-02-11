@@ -49,39 +49,39 @@ class SelectTime(CTkFrame):
         self.create_labels()
         self.setup_page()
 
-    def calculate_time(self):
-        self.start_time = self.options[0].get_time()
-        self.finish_time = self.options[1].get_time()
-        self.buffer_before = self.options[2].get_time()
-        self.buffer_after = self.options[3].get_time()
+    # def calculate_time(self):
+    #     self.start_time = self.options[0].get_time()
+    #     self.finish_time = self.options[1].get_time()
+    #     self.buffer_before = self.options[2].get_time()
+    #     self.buffer_after = self.options[3].get_time()
+    #
+    #     start = ClientCommands.convert_to_minutes(self.start_time)
+    #     finish = ClientCommands.convert_to_minutes(self.finish_time)
+    #     buffer_b = ClientCommands.convert_to_minutes(self.buffer_before)
+    #     buffer_a = ClientCommands.convert_to_minutes(self.buffer_after)
+    #
+    #     total_time = finish - start + buffer_b + buffer_a
+    #     total_hours, total_minutes = divmod(total_time, 60)
+    #
+    #     total_time_str = f"{int(total_hours)} hr {int(total_minutes)} mins"
+    #     total_time_hours_str = f"{total_hours:.2f} hours"
+    #
+    #     return total_time_str
 
-        start = ClientCommands.convert_to_minutes(self.start_time)
-        finish = ClientCommands.convert_to_minutes(self.finish_time)
-        buffer_b = ClientCommands.convert_to_minutes(self.buffer_before)
-        buffer_a = ClientCommands.convert_to_minutes(self.buffer_after)
-
-        total_time = finish - start + buffer_b + buffer_a
-        total_hours, total_minutes = divmod(total_time, 60)
-
-        total_time_str = f"{int(total_hours)} hr {int(total_minutes)} mins"
-        total_time_hours_str = f"{total_hours:.2f} hours"
-
-        return total_time_str
-
-    def update_booking(self):
-        allocated_time = self.calculate_time()
-        print(f"Doctor has chosen allocated time of: {allocated_time} for consultation.")
-        start_time = self.options[0].get_time()
-
-        message = (f"Your booking has been accepted. The time allotted for your "
-                   f"consultation will be at {self.start_time} for {allocated_time}.\n"
-                   f"The method of consultation will be via online chat.")
-
-        packet = ['Time', allocated_time, self.patient_id, ['Status', 'Accepted']]
-        packet_2 = [self.patient_id, message, ClientCommands.format_time(), 'Accepted', 'doctor']
-
-        ClientCommands.update_booking(self.client, packet)
-        ClientCommands.send_patient_notification(self.client, packet_2)
+    # def update_booking(self):
+    #     allocated_time = self.calculate_time()
+    #     print(f"Doctor has chosen allocated time of: {allocated_time} for consultation.")
+    #     start_time = self.options[0].get_time()
+    #
+    #     message = (f"Your booking has been accepted. The time allotted for your "
+    #                f"consultation will be at {self.start_time} for {allocated_time}.\n"
+    #                f"The method of consultation will be via online chat.")
+    #
+    #     packet = ['Time', allocated_time, self.patient_id, ['Status', 'Accepted']]
+    #     packet_2 = [self.patient_id, message, ClientCommands.format_time(), 'Accepted', 'doctor']
+    #
+    #     ClientCommands.update_booking(self.client, packet)
+    #     ClientCommands.send_patient_notification(self.client, packet_2)
 
     def create_labels(self):
         self.title = CTkLabel(self, text='Choose a specified time', text_color='Black',

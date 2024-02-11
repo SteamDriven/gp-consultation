@@ -95,7 +95,15 @@ tables = {
               foreign key (Patient_ID) references PATIENT (Patient_ID)
               foreign key (Clinician_ID) references CLINICIAN (Clinician_ID)
               foreign key (Item_ID) references MEDICATIONS (Item_ID)
-        '''}
+        ''',
+    "CHATS": '''
+            
+            Booking_Reference   text,
+            Message_History     text,
+            
+            primary key (Booking_Reference)
+    '''
+}
 
 
 # CLASSES
@@ -124,6 +132,15 @@ class Database:  # Created a class for Database along with necessary attributes
 
         finally:
             self.conn.commit()
+
+    def request_chat_rooms(self):
+        self.sql = '''SELECT * FROM BOOKINGS WHERE Status = ?'''
+        self.query(self.sql, ('Chat room', ))
+
+        result = self.cursor.fetchall()
+        if result:
+            return result
+        return False
 
     def find_doctor(self, user_data):
         self.sql = '''SELECT Clinician_ID, First_Name, Last_Name FROM ClINICIAN WHERE Clinician_ID=?'''

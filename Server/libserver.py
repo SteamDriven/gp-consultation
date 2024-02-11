@@ -158,7 +158,6 @@ class Server:
                         user_data = PatientData().from_dict(message['DATA'])
 
                         patient_to_assign = message['DATA']['user']
-
                         doctor_to_assign = message['DATA']['assigned_doctor']
 
                         if doctor_to_assign is None:
@@ -196,21 +195,25 @@ class Server:
 
                             doctor_message = (f"You have been requested for an appointment by Patient: "
                                               f"{patient_name} {patient_id}"
-                                              f"The time of the appointment is: {time_of_appt}\n and the date"
+                                              f"The time of the appointment is: {time_of_appt}\n and the date "
                                               f"is: {date_of_appt}.")
 
-                            patient_message = (f"You have scheduled a request for an appointment with DR"
-                                               f"{doctor_name} {doctor_id}."
+                            patient_message = (f"You have scheduled a request for an appointment with Dr "
+                                               f"{doctor_name} {doctor_id}. "
                                                f"The appointment is set for {date_of_appt} at {time_of_appt}.\n"
                                                f"You will receive a confirmation upon acceptance of your appointment.")
 
                             status = 'Pending'
                             current_timestamp = ServerCommands.format_time()
 
+                            doctor_message = ServerCommands.format_paragraph(doctor_message, 120)
+                            patient_message = ServerCommands.format_paragraph(patient_message, 120)
+
                             doctor_notification = {
                                 'identifier': self.database.generate_code(5),
                                 'user': doctor_id,
-                                'message': [f'New Booking: Dr {doctor_name}', doctor_message, patient_id],
+                                'message': [f'New Booking: Dr {doctor_name}', doctor_message, patient_id,
+                                            symptoms, images],
                                 'time': current_timestamp,
                                 'status': status,
                                 'service': 'patient',

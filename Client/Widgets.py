@@ -7,6 +7,7 @@ from PIL import Image
 from datetime import datetime
 from configs import Commands
 from helper import ClientCommands
+from textwrap import *
 
 import logging
 import threading
@@ -311,18 +312,19 @@ class Chat(CTkFrame):
     DEFAULT_TEXT = 'white'
     DEFAULT_BG = '#4c6fbf'
     DEFAULT_CHAT_BG = '#f2f2f2'
+    MESSAGE_WIDTH = 50
 
-    def __init__(self, master=None, title='Chat', client=None, user_data=None, state=None, **kwargs):
+    def __init__(self, master=None, title='Chat', client=None, user_data=None, state=None, callback=None, **kwargs):
         super().__init__(master, **kwargs)
 
         self.user_data = user_data
         username = ' '.join(self.user_data.user[1][1:]).title()
 
         self.ai_states = {
-            'greeting': (f"Hello, {username}!. "
-                         "Please describe your symptoms in detail. \n"
-                         "Include information such as when they started, "
-                         "their intensity, \nand any other relevant information."),
+            'greeting': (f"Hello, {username}! "
+                         "Please describe your symptoms in detail.\n"
+                         "Include information such as when they started,"
+                         "their intensity,\nand any other relevant information."),
 
             'images': (f"Fantastic, thank you {username}. "
                        "I'll be sure to note those down for you.\n"
@@ -371,6 +373,7 @@ class Chat(CTkFrame):
         self.row_counter = 0
         self.client_message_top = 0
         self.service_message_top = 0
+        self.callback = callback
 
         self.setup_chat()
         self.create_chat()
@@ -432,13 +435,13 @@ class Chat(CTkFrame):
         message = self.chat_box.txt.get_message()
         return message
 
-    def send_message(self):
+    def send_message(self, sender, recipient):
         message = self.get_message()
         user_id = self.user_data.user[1][0]
         doctor_id = self.assigned_doctor[1][0]
 
-        logging.info(f"USER {user_id} is sending a message.")
-        ClientCommands.handle_chat(self.client, message, cmds.chat_commands['broadcast'], sender, recepient)
+        logging.info(f"USER {sender} is sending a message.")
+        ClientCommands.handle_chat(self.client, message, cmds.chat_commands['broadcast'], sender, recipient)
         self.create_client_message(message, 'white', 'Test')
 
     def handle_ai_chat(self):
@@ -484,6 +487,11 @@ class Chat(CTkFrame):
                         appt_cdms['create apt'],
                         data_dict
                     )
+
+                    page_packet = [self.user_data.day, self.user_data.time, self.user_data.symptoms,
+                                   self.user_data.images, ' '.join(self.user_data.doctor[1][1:]).title()]
+
+                    self.callback(page_packet)
 
                     if received_update:
                         logging.info(f'Received notification: {received_update}')
@@ -532,7 +540,7 @@ class Chat(CTkFrame):
                     self.user_data.images = self.upload_frame.images
 
                     logging.info(f"Sending USER: {self.user_data.user}'s appointment booking for processing.\n"
-                                 f"Their assigned doctor is: {self.user_data.doctor}. Assigning random.")
+                                 f"They've chosen to have a doctor assigned. Assigning random doctor.")
 
                     print(f"{self.user_data.user}'s is the USER who has requested a booking.")
 
@@ -544,6 +552,9 @@ class Chat(CTkFrame):
                         appt_cdms['create apt'],
                         data_dict
                     )
+
+                    page_packet = [self.user_data.day, self.user_data.time, self.user_data.symptoms,
+                                   self.user_data.images, None]
 
             else:
                 self.create_service_message(f"{self.ai_states['confused']}")
@@ -560,13 +571,19 @@ class Chat(CTkFrame):
         spacer.pack(side='top', fill='x', anchor=anchor)
 
     def create_service_message(self, message):
-        chat = MessageBox(self.left_frame, message=message, name="Service")
+        new_message = ClientCommands.format_paragraph(message, self.MESSAGE_WIDTH)
+        print(new_message)
+
+        chat = MessageBox(self.left_frame, message=new_message, name="Service")
         chat.pack(side='top', padx=10, anchor=W)
 
         self.create_spacer(self.right_frame, 'e')
 
     def create_client_message(self, message, color, name):
-        chat = MessageBox(self.right_frame, message=message, fg=color,
+        new_message = ClientCommands.format_paragraph(message, self.MESSAGE_WIDTH)
+        print(new_message)
+
+        chat = MessageBox(self.right_frame, message=new_message, fg=color,
                           name=name)
         chat.pack(side='top', padx=10, anchor=E)
 
@@ -998,10 +1015,10 @@ class Notification_Box(CTkFrame):
             self.patient_id = self.message[2]
 
             if self.right_frame:
-                self.right_frame.bind('<Double-Button-1>', lambda event: self.change_func(self.patient_id))
+                self.right_frame.bind('<Double-Button-1>', lambda event: self.change_func(self.patient_id, message[3:]))
 
-        if self.type[0] == 'System':
-            self.doctor_id = self.message[2]
+        # elif self.type[0] == 'System':
+        #     self.doctor_id = self.message[2]
 
     def setup(self):
         self.left_frame = CTkFrame(self, fg_color='white', corner_radius=0, width=10)
@@ -1045,14 +1062,13 @@ class Notification_Box(CTkFrame):
 
 
 class Selector(CTkFrame):
-    def __init__(self, master=None, label=None, desc=None, times=None, **kwargs):
+    def __init__(self, master=None, label=None, times=None, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.configure(fg_color='white')
+        self.configure(fg_color='#f2f2f2')
 
         # Configs
         self.label = label
-        self.description = desc
         self.times = times
 
         # Widgets
@@ -1070,27 +1086,49 @@ class Selector(CTkFrame):
         return self.times_options.get()
 
     def create_widgets(self):
-        self.left_frame = CTkFrame(self, fg_color='white')
-        self.right_frame = CTkFrame(self, fg_color='white')
-        self.label_w = CTkLabel(self.left_frame, text=self.label, text_color='black', font=('Arial Bold', 23),
+        self.left_frame = CTkFrame(self, fg_color='#f2f2f2')
+        # self.right_frame = CTkFrame(self, fg_color='#f2f2f2')
+        self.label_w = CTkLabel(self.left_frame, text=self.label, text_color='#737373', font=('Arial Bold', 18),
                                 justify='left')
-        self.desc_w = CTkLabel(self.left_frame, text=self.description, text_color='#cecaca', font=('Arial light', 18))
-        self.times_options = CTkComboBox(self.right_frame, values=self.times, fg_color='white', border_color='black',
+        self.times_options = CTkComboBox(self.left_frame, values=self.times, fg_color='white', border_color='#737373',
                                          button_color='#cecaca', button_hover_color='#a2a1a1')
         self.times_options.set(self.times[0])
-        # self.separator = CTkFrame(self, fg_color='#e5e5e5', height=3)
+        self.separator = CTkFrame(self, fg_color='#cecaca', height=2)
 
     def setup_widgets(self):
-        self.left_frame.pack(side='left', padx=10, pady=10, fill='x', expand=True, ipadx=300)
-        self.right_frame.pack(side='right', padx=10, pady=10, fill='x', expand=True)
-        self.label_w.pack(side='top', padx=10, pady=(10, 0), anchor=W)
-        self.desc_w.pack(padx=10, anchor=W)
-        self.times_options.pack(side='top', padx=10, pady=10, anchor=E, ipadx=8)
-        # self.separator.pack(side='bottom', padx=5, pady=15, fill='x', expand=True)
+        self.left_frame.pack(side='top', padx=5, pady=10, fill='x', expand=True, ipadx=20, anchor=W)
+        # self.right_frame.pack(side='top', padx=5, pady=10, fill='x', expand=True, anchor=E)
+        self.label_w.pack(side='left', padx=10, pady=(10, 0), anchor=W)
+        self.times_options.pack(side='right', padx=10, pady=10, anchor=E, ipadx=4)
+        self.separator.pack(side='top', padx=15, pady=15, fill='x', expand=True)
 
 
-class TimeFrame(CTkFrame):
-    def __init__(self, master=None, **kwargs):
+class Chat_Button(CTkFrame):
+    def __init__(self, master, patient_name, message, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.container = None
+        self.name = patient_name
+        self.recent_message = message
+
+        self.profile_picture = None
+        self.left_frame = None
+        self.right_frame = None
+        self.separator = None
+        self.name_label = None
+        self.message_label = None
+
+    def create_widgets(self):
+        self.left_frame = CTkFrame(self, fg_color='white')
+        self.right_frame = CTkFrame(self, fg_color='white')
+        self.profile_picture = CTkFrame(self.left_frame, fg_color='blue')
+        self.name_label = CTkLabel(self.right_frame, fg_color='white', text_color='#737373',
+                                   font=('Arial bold', 23), justify='left')
+        self.message_label = CTkLabel(self.right_frame, fg_color='white', text_color='#737373',
+                                      font=('Arial light', 17), justify='left')
+
+    def setup_widgets(self):
+        self.left_frame.pack(side='left', padx=10, pady=10, fill='x', expand=True)
+        self.right_frame.pack(padx=10, pady=10, fill='x', expand=True)
+        self.profile_picture.pack(padx=10, pady=10, fill='both', expand=True)
+        self.name_label.pack(side='top', padx=10, pady=25, anchor=W)
+        self.message_label.pack(padx=10, pady=5, anchor=W)

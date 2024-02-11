@@ -1,4 +1,5 @@
 import json
+import textwrap
 from datetime import datetime
 from tkinter import messagebox
 from configs import *
@@ -59,6 +60,13 @@ class ClientCommands:
         now = datetime.now()
         formatted_time = now.strftime('%d %b %Y at %I:%M %p')
         return formatted_time
+
+    @staticmethod
+    def format_paragraph(input_string, width):
+        if len(input_string) < width:
+            return input_string
+        else:
+            return textwrap.fill(input_string, width=width)
 
     @staticmethod
     def convert_to_minutes(time_str):

@@ -1,6 +1,7 @@
 import logging
 import random
 import string
+import textwrap
 
 from configs import Commands
 from datetime import *
@@ -35,6 +36,13 @@ class ServerCommands:
         now = datetime.now()
         formatted_time = now.strftime('%d %b %Y at %I:%M %p')
         return formatted_time
+
+    @staticmethod
+    def format_paragraph(input_string, width):
+        if len(input_string) < width:
+            return input_string
+        else:
+            return textwrap.fill(input_string, width=width)
 
     @staticmethod
     def compare_login(data, db):

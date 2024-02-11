@@ -1,5 +1,6 @@
 from customtkinter import *
 from Client.Widgets import Chat
+from Client.Pages.Dashboard.AppointmentDetails import *
 
 
 class Symptoms(CTkFrame):
@@ -20,10 +21,17 @@ class Symptoms(CTkFrame):
         self.create()
         self.place()
 
+    def change_to_confirmation_page(self, info):
+        date, time, symptoms, images, doctor = info[0], info[1], info[2], info[3], info[4]
+        self.controller.frames['apt details'] = AppointmentDetails(self.controller.main_frame, self.controller,
+                                                                   date, time, symptoms, images, doctor)
+        self.controller.show_frame('apt details')
+
     def create(self):
         self.title = CTkLabel(self, text='Discuss your symptoms', text_color='Black',
                               font=('Arial Bold', 30))
-        self.ai_chat = Chat(self, user_data=self.user_data, client=self.client, state='ai')
+        self.ai_chat = Chat(self, user_data=self.user_data, client=self.client, state='ai',
+                            callback=self.change_to_confirmation_page)
         self.cancel_button = CTkButton(self, text='Cancel Request', text_color='white', font=('Arial Bold', 20),
                                        fg_color='#b1c9eb', corner_radius=5)
 

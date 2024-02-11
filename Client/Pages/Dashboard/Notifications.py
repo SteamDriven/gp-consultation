@@ -6,7 +6,7 @@ from customtkinter import *
 from configs import *
 
 from Client.Widgets import Notification_Box
-from Client.Pages.Dashboard.SelectTime import *
+from Client.Pages.Dashboard.AcceptAppointment import *
 from Client.helper import *
 
 
@@ -76,13 +76,13 @@ class Notifications(CTkFrame):
         self.notifications[identifier] = notification
         logging.info(f'Notification: {notification.identifier} has been added.')
 
-    def change_page(self, patient_id):
+    def change_page(self, patient_id, data):
         patient_name = self.client.handle_server_messages(Commands.packet_commands['find p'], None, patient_id)
         booking = self.client.handle_server_messages(Commands.packet_commands['find b'], None, patient_id)
 
         print(patient_name, booking)
 
-        frame = SelectTime(self.controller.main_frame, self.controller, booking, patient_name, self.client)
+        frame = AcceptAppointment(self.controller.main_frame, self.controller, booking, patient_name, self.client, data)
 
         for f in self.controller.frames.values():
             f.pack_forget()
