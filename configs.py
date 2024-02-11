@@ -34,7 +34,8 @@ class Commands:
             'send patient': 'SEND PATIENT NOTIFICATION',
             'send doctor':  'SEND DOCTOR NOTIFICATION',
             'search':       'SEARCH FOR NOTIFICATIONS',
-            'send':         'SEND NOTIFICATION'
+            'send':         'SEND NOTIFICATION',
+            'invite':       'INVITE USER',
         },
     }
 

@@ -7,6 +7,7 @@ import customtkinter as ctk
 
 from Client.Pages.Dashboard.Dashboard import PatientDashboard, DoctorDashboard
 from Client.Pages.Login import Login
+from Client.Pages.Chat.Overview import ChatOverview
 from libclient import Client
 from methods import *
 from helper import ClientCommands
@@ -31,8 +32,8 @@ class App(ctk.CTk):
         self.user_data = None
 
         self.pages_list = {
-            # 'dashboard': PatientDashboard,
             "login": Login,
+            "chat": ChatOverview,
         }
 
         # self.create_random_doctor(1)
@@ -48,29 +49,22 @@ class App(ctk.CTk):
 
     def create_pages(self):
         for key, value in self.pages_list.items():
-            # if key == 'dashboard':
-            #     self.frames[key] = value(self.container, self, self.user_data, self.client)
-            #
-            # else:
             self.frames[key] = value(self.container, self)
 
-        # Using the method mentioned later in the class to display a specific frame upon opening
-        self.show_frame('login')
+        ClientCommands.show_frame('chat', self.frames)
 
-    def show_frame(self, cont: str):
-        frame = self.frames[cont]
-        print('Displaying frame:', cont)
-
-        try:
-            for f in self.frames.values():
-                print(f)
-                f.pack_forget()
-
-            frame.pack(side="top", fill="both", expand=True)
-            frame.tkraise()
-
-        except Exception as e:
-            print(f"Error in show_frame: {e}")
+    # def show_frame(self, cont: str, frame):
+    #
+    #     if cont not in self.frames and frame:
+    #         self.frames[cont] = frame(self.container)
+    #
+    #     selected_page = self.frames[cont]
+    #     for p in self.frames.values():
+    #         if p:
+    #             p.pack_forget()
+    #
+    #         selected_page.pack(side="top", fill="both", expand=True)
+    #         selected_page.tkraise()
 
         # Initialise
 

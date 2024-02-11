@@ -7,6 +7,7 @@ from PIL import Image
 from datetime import datetime
 from configs import Commands
 from helper import ClientCommands
+from textwrap import *
 
 import logging
 import threading
@@ -44,7 +45,7 @@ class Label(CTkFrame):
         else:
             self.side = 'right'
 
-        self.configure(fg_color=self.fg, corner_radius=4, border_width=1, border_color='light grey')
+        self.configure(fg_color=self.fg, border_color='light grey')
 
         self.label = CTkLabel(self, text=self.text, fg_color=self.fg, text_color=self.text_col,
                               font=self.font)
@@ -93,7 +94,7 @@ class ChatEntry(CTkFrame):
 
         self.placeholder = placeholder
         self.command = command
-        self.configure(fg_color='#f2f2f2', corner_radius=0)
+        self.configure(fg_color='white', corner_radius=3, border_color='#e7e5e5', border_width=3)
 
         self.setup_box()
         self.place_box()
@@ -186,24 +187,51 @@ class MessageBox(CTkFrame):
         self.cur_time = None
         self.cur_date = None
         self.name_lbl = None
+        self.profile = None
 
-        self.configure(fg_color='#f2f2f2', corner_radius=3)
+        self.image = None
+        self.preview = None
+
+        self.profiles = {
+            1: join(dirname(__file__), 'Images/Profiles/1.png'),
+            2: join(dirname(__file__), 'Images/Profiles/2.png'),
+            3: join(dirname(__file__), 'Images/Profiles/3.png'),
+            4: join(dirname(__file__), 'Images/Profiles/4.png'),
+            5: join(dirname(__file__), 'Images/Profiles/5.png'),
+            6: join(dirname(__file__), 'Images/Profiles/Server.png')
+        }
+
+        self.configure(fg_color='white', corner_radius=3)
         self.create_widget()
         self.place_widgets()
 
     def create_widget(self):
-        self.data_frame = CTkFrame(self, fg_color='#f2f2f2')
-        self.name_lbl = CTkLabel(self.data_frame, text=self.name, text_color='#737373', font=('Arial light', 14))
+        if self.name[1] == 'Service':
+            self.image = Image.open(self.profiles[6])
+            self.preview = CTkImage(self.image, size=(100, 95))
+
+        elif self.name[1] == 'Doctor':
+            self.image = Image.open(self.profiles[5])
+            self.preview = CTkImage(self.image, size=(100, 95))
+
+        else:
+            self.image = Image.open(self.profiles[random.randint(1, 4)])
+            self.preview = CTkImage(self.image, size=(100, 95))
+
+        self.data_frame = CTkFrame(self, fg_color='white')
+        self.profile = CTkLabel(self.data_frame, image=self.preview, text='', fg_color='white')
+        self.name_lbl = CTkLabel(self.data_frame, text=self.name[0], text_color='#737373', font=('Arial light', 14))
         self.cur_time = CTkLabel(self.data_frame, text=f"{datetime.now().strftime('%H:%M')}", text_color='#737373',
                                  font=('Arial light', 13))
         self.cur_date = CTkLabel(self.data_frame, text=f"{datetime.now().strftime('%m/%d/%y')}",
                                  text_color='#737373', font=('Arial light', 13))
         self.message_text = CTkLabel(self, fg_color=self.fg, text=self.message, text_color='#525254',
-                                     font=('Arial Light', 25), justify='left', corner_radius=5)
+                                     font=('Arial Light', 20), justify='left', corner_radius=5)
 
     def place_widgets(self):
         self.data_frame.pack(anchor=W)
-        self.name_lbl.pack(side='left', padx=(5, 10))
+        self.profile.pack(side='left', padx=5)
+        self.name_lbl.pack(side='left', padx=(5, 10),)
         self.cur_time.pack(side='left', padx=5)
         self.cur_date.pack(side='right', padx=5)
         self.message_text.pack(padx=5, ipadx=10, ipady=10)
@@ -307,270 +335,31 @@ class Treeview(CTkFrame):
             print('No doctors found.')
 
 
-class Chat(CTkFrame):
-    DEFAULT_TEXT = 'white'
-    DEFAULT_BG = '#4c6fbf'
-    DEFAULT_CHAT_BG = '#f2f2f2'
+class SearchBar(CTkFrame):
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(parent, **kwargs)
 
-    def __init__(self, master=None, title='Chat', client=None, user_data=None, state=None, **kwargs):
-        super().__init__(master, **kwargs)
-
-        self.user_data = user_data
-        username = ' '.join(self.user_data.user[1][1:]).title()
-
-        self.ai_states = {
-            'greeting': (f"Hello, {username}!. "
-                         "Please describe your symptoms in detail. \n"
-                         "Include information such as when they started, "
-                         "their intensity, \nand any other relevant information."),
-
-            'images': (f"Fantastic, thank you {username}. "
-                       "I'll be sure to note those down for you.\n"
-                       "If possible, can you please attach any relevant images of affected areas\nor symptoms you're "
-                       "having and if not, don't you worry about it."),
-
-            'no-images': ("I see you've decided not to include any images.\n"
-                          "That's no problem, you will be able to attach images to your profile later."),
-
-            'yes-images': ("Thank you for submitting your images.\n"
-                           "This will help aid your GP in diagnosis."),
-
-            "prompt": ("Would you like to choose a specific GP from our\n"
-                       "provided list of available clinicians?"),
-
-            "declined": (f"Great thank you {username}, I really appreciate that. "
-                         "Your request will be sent to an available clinician whom will be assigned\n"
-                         "to you shortly. All your details provided today will be provided too. Be sure"
-                         "to look out on your 'Notifications' tab for request acceptance.\n\nHave a nice day!."),
-
-            'confused': f"I apologise {username}, I didn't get that. Could you please message again?",
-
-            "accepted": "Please select one of the available GPs listed below:",
-
-            "completed": (f"Great, thank you {username}, I really appreciate your cooperation today.\n"
-                          f"Your request has been sent to your chosen GP, named Dr John Doe along\n"
-                          "with all your entered details. You will be notified on your dashboard when your request\n"
-                          "has been accepted. Be sure to keep a look out on your NOTIFICATIONS tab.\n\nHave a nice day!"
-                          )}
-
+        self.configure(fg_color='white')
         self.container = None
-        self.client = client
-        self.title = title
-        self.label = None
-        self.chat_frame = None
-        self.chat_box = None
-        self.upload_frame = None
-        self.left_frame = None
-        self.right_frame = None
-        self.doctor_list = None
-        self.assigned_doctor = None
-        self.spacer = None
-        self.state = state
-        self.user_responses = {}
-        self.current_state = "greeting"
-        self.row_counter = 0
-        self.client_message_top = 0
-        self.service_message_top = 0
+        self.entry_box = None
+        self.image = None
 
-        self.setup_chat()
-        self.create_chat()
+        self.create()
+        self.setup()
 
-        if self.state == 'ai':
-            self.create_service_message(f"{self.ai_states[self.current_state]}")
+    def create(self):
+        image_path = join(dirname(__file__), 'Images/search.png')
 
-    def listen_for_messages(self):
-        logging.info(f"Listening for messages.")
-        while True:
-            messages = self.client.receive_message()
-            logging.info(f"Received message: {messages}")
+        self.container = CTkFrame(self, fg_color='white')
+        self.image = CTkLabel(self.container, image=CTkImage(Image.open(image_path), size=(40, 36)), fg_color='white',
+                              text='')
+        self.entry_box = CTkEntry(self.container, placeholder_text='Search for a patient', fg_color='white',
+                                  border_width=0, text_color='#636363', font=('Arial light', 18))
 
-            if messages['COMMAND'] == cmds.chat_commands['receive']:
-                self.create_client_message(messages['DATA'], '#e8ebfa', messages['CLIENT'][1])
-
-    def start_message_listener(self):
-        logging.info(f"Creating message listener.")
-        threading.Thread(target=self.listen_for_messages).start()
-
-    def send_notifications(self):
-        pass
-
-    def setup_chat(self):
-        self.container = CTkFrame(self, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
-        self.label = Label(self.container, text=self.title)
-        self.chat_frame = CTkScrollableFrame(self.container, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
-        self.left_frame = CTkFrame(self.chat_frame, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
-        self.right_frame = CTkFrame(self.chat_frame, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
-
-        if self.state == 'ai':
-            self.chat_box = ChatEntry(self.container, command=self.handle_ai_chat)
-
-        elif self.state == 'client':
-            self.chat_box = ChatEntry(self.container, command=self.send_message)
-
-    def disable_chat(self):
-        self.chat_box.pack_forget()
-
-    def create_chat(self):
-        self.container.pack(fill='both', expand=True)
-        self.label.pack(fill='x', ipady=5)
-        self.chat_frame.pack(fill='both', expand=True, pady=(0, 10))
-        self.left_frame.pack(side='left', fill='both', expand=True)
-        self.right_frame.pack(side='right', fill='both', expand=True)
-        self.chat_box.pack(side='bottom', fill='x', pady=15, padx=15, ipady=5)
-
-    def ignore_upload(self):
-        self.upload_frame.destroy()
-        self.upload_frame = None
-
-        self.create_service_message(f"{self.ai_states['no-images']}")
-
-        self.current_state = 'prompt'
-        self.create_service_message(f"{self.ai_states[self.current_state]}")
-        self.current_state = 'accepted'
-
-    def get_message(self):
-        message = self.chat_box.txt.get_message()
-        return message
-
-    def send_message(self):
-        message = self.get_message()
-        user_id = self.user_data.user[1][0]
-        doctor_id = self.assigned_doctor[1][0]
-
-        logging.info(f"USER {user_id} is sending a message.")
-        ClientCommands.handle_chat(self.client, message, cmds.chat_commands['broadcast'], sender, recepient)
-        self.create_client_message(message, 'white', 'Test')
-
-    def handle_ai_chat(self):
-        message = self.get_message()
-        logging.info('Chat set to AI state, only one client connected.')
-
-        logging.info(f"User response: {message}")
-        logging.info(f"User chat state: {self.current_state}")
-
-        if not message:
-            if self.current_state == 'completed':
-                if self.doctor_list:
-                    doctor_info = []
-                    selected = self.doctor_list.get_selected()
-
-                    for label in selected.winfo_children():
-                        doctor_info.append(label.get())
-
-                    logging.info(f"User has selected DOCTOR: {doctor_info}")
-                    self.assigned_doctor = doctor_info
-                    self.user_data.doctor = ['DOCTOR', self.assigned_doctor]
-
-                    if "John Doe" in self.ai_states['completed']:
-                        print(' '.join(self.user_data.doctor[1][1:]).title())
-                        self.ai_states['completed'] = self.ai_states['completed'].replace("John Doe",
-                                                                                          ' '.join(
-                                                                                              self.user_data.doctor[1][
-                                                                                              1:]).title())
-
-                    self.create_service_message(f"{(self.ai_states['completed'])}")
-                    self.disable_chat()
-
-                    logging.info(f"Sending USER: {self.user_data.user}'s appointment booking for processing.")
-
-                    print(f"{self.user_data.user}'s is the USER who has requested a booking.")
-                    print(f"{self.user_data.doctor} is the USER's assigned doctor.")
-
-                    data_dict = self.user_data.to_dict()
-
-                    received_update = ClientCommands.set_appointment(
-                        self.client,
-                        self.user_data.user[0],
-                        appt_cdms['create apt'],
-                        data_dict
-                    )
-
-                    if received_update:
-                        logging.info(f'Received notification: {received_update}')
-
-            self.create_service_message(f"{self.ai_states['confused']}")
-        # return
-
-        if self.current_state == 'greeting':
-            self.user_data.symptoms = message
-            self.current_state = 'images'
-
-        self.create_client_message(message, 'white', ' '.join(self.user_data.user[1][1:]).title())
-
-        if self.current_state == 'images' and self.upload_frame is not None:
-            logging.info("User has already received an offer to upload symptoms.")
-
-            uploaded_images = self.upload_frame.get_children()
-            if not uploaded_images:
-                self.create_service_message(f"{self.ai_states['no-images']}")
-
-            else:
-                self.create_service_message(f"{self.ai_states['yes-images']}")
-
-            self.current_state = 'prompt'
-            self.create_service_message(f"{self.ai_states[self.current_state]}")
-            self.current_state = 'accepted'
-
-        if self.current_state == 'accepted':
-            if "yes" in message.lower():
-
-                self.create_service_message(f"{(self.ai_states[self.current_state])}")
-                self.doctor_list = Treeview(self.left_frame, self.client, ['ID', 'First Name', 'Last Name'])
-                self.doctor_list.pack(side='top', pady=10, padx=40, anchor=W)
-
-                done = CTkButton(self.left_frame, text='Done', text_color='white', fg_color='#7b96d4',
-                                 command=self.handle_ai_chat, height=10, width=10)
-                done.pack(side='top', pady=10, padx=10, anchor=W, ipadx=10, ipady=5)
-                self.current_state = 'completed'
-
-            elif "no" in message.lower():
-                self.current_state = 'declined'
-                self.create_service_message(f"{(self.ai_states[self.current_state])}")
-                self.disable_chat()
-
-                if self.upload_frame:
-                    self.user_data.images = self.upload_frame.images
-
-                    logging.info(f"Sending USER: {self.user_data.user}'s appointment booking for processing.\n"
-                                 f"Their assigned doctor is: {self.user_data.doctor}. Assigning random.")
-
-                    print(f"{self.user_data.user}'s is the USER who has requested a booking.")
-
-                    data_dict = self.user_data.to_dict()
-
-                    ClientCommands.set_appointment(
-                        self.client,
-                        self.user_data.user[0],
-                        appt_cdms['create apt'],
-                        data_dict
-                    )
-
-            else:
-                self.create_service_message(f"{self.ai_states['confused']}")
-
-        if self.current_state == 'images' and not self.upload_frame:
-            self.create_service_message(f"{self.ai_states[self.current_state]}")
-            self.upload_frame = UploadFrame(self.left_frame)
-            self.upload_frame.cancel.configure(command=self.ignore_upload)
-            self.upload_frame.pack(side='top', pady=5, anchor=W)
-            self.create_spacer(self.right_frame, 'e')
-
-    def create_spacer(self, parent, anchor):
-        spacer = CTkFrame(parent, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
-        spacer.pack(side='top', fill='x', anchor=anchor)
-
-    def create_service_message(self, message):
-        chat = MessageBox(self.left_frame, message=message, name="Service")
-        chat.pack(side='top', padx=10, anchor=W)
-
-        self.create_spacer(self.right_frame, 'e')
-
-    def create_client_message(self, message, color, name):
-        chat = MessageBox(self.right_frame, message=message, fg=color,
-                          name=name)
-        chat.pack(side='top', padx=10, anchor=E)
-
-        self.create_spacer(self.left_frame, 'w')
+    def setup(self):
+        self.container.pack(side='top', fill='both', expand=True)
+        self.image.pack(side='left', padx=10)
+        self.entry_box.pack(fill='x', pady=5, ipadx=15)
 
 
 class InfoEntry(CTkFrame):
@@ -898,7 +687,7 @@ class Calendar(CTkFrame):
 
 
 class ImageButton(CTkFrame):
-    def __init__(self, master=None, description="", path=None, size=None, fg=None, font=None, command=None, **kwargs):
+    def __init__(self, master=None, description=None, path=None, size=None, fg=None, font=None, command=None, **kwargs):
         super().__init__(master, **kwargs)
 
         # CONFIGURATIONS
@@ -928,19 +717,25 @@ class ImageButton(CTkFrame):
         self.place_widgets()
 
     def setup_widgets(self):
-        print('oof1')
         image = Image.open(self.img_path)
-        print('oof2')
         image_ck = CTkImage(image, size=self.size)
 
-        self.logo = CTkLabel(self, image=image_ck, text='')
-        self.btn = CTkButton(self, text=self.text, text_color='white', font=self.font,
-                             fg_color=self.background_color, hover_color='#202f50', corner_radius=0,
-                             anchor='w', command=self.command)
+        if self.text is None:
+            self.logo = CTkButton(self, image=image_ck, text='', hover_color='#202f50', fg_color=self.background_color)
+        else:
+
+            self.logo = CTkLabel(self, image=image_ck, text='')
+            self.btn = CTkButton(self, text=self.text, text_color='white', font=self.font,
+                                 fg_color=self.background_color, hover_color='#202f50', corner_radius=0,
+                                 anchor='w', command=self.command)
 
     def place_widgets(self):
-        self.logo.grid(row=0, column=0, sticky='ew')
-        self.btn.grid(row=0, column=1, columnspan=2, sticky='ew')
+        if self.text is None:
+            self.logo.grid(row=0, column=0, sticky='ew')
+
+        else:
+            self.logo.grid(row=0, column=0, sticky='ew')
+            self.btn.grid(row=0, column=1, columnspan=2, sticky='ew')
 
 
 class Notification_Box(CTkFrame):
@@ -951,9 +746,12 @@ class Notification_Box(CTkFrame):
         self.configure(fg_color='white')
         self.headers = {
 
-            'system': ['System', '#7ed957'],
-            'doctor': ['Doctor', '#8c52ff'],
-            'patient': ['Patient', '#ff914d']
+            'system':           ['System', '#7ed957'],
+            'doctor':           ['Doctor', '#8c52ff'],
+            'patient':          ['Patient', '#ff914d'],
+            'reminder':         ['Reminder', '#f366ba'],
+            'booking':          ['Booking', '#78d1cc'],
+            'consultation':     ['Consultation', '#0cc0df']
         }
 
         self.type = self.headers[header]
@@ -998,10 +796,23 @@ class Notification_Box(CTkFrame):
             self.patient_id = self.message[2]
 
             if self.right_frame:
-                self.right_frame.bind('<Double-Button-1>', lambda event: self.change_func(self.patient_id))
+                self.right_frame.bind('<Double-Button-1>', lambda event: self.change_func(self.patient_id, message[3:]))
 
-        if self.type[0] == 'System':
-            self.doctor_id = self.message[2]
+        elif self.type[0] == 'Booking':
+            print('Notification type is BOOKING. Changing state.')
+
+            if self.right_frame:
+                start_chat = CTkButton(self.right_frame, text='Start a new chat', text_color='white', fg_color='#b1c9eb'
+                                       ,font=('Arial bold', 20), command=lambda: self.change_func)
+                start_chat.pack(padx=10, anchor=W, ipadx=5)
+
+        elif self.type[0] == 'Consultation':
+            if self.right_frame:
+                accept_invite = CTkButton(self.right_frame, text='Start a new chat', text_color='white', fg_color='#b1c9eb'
+                                       ,font=('Arial bold', 20), command=lambda: self.change_func)
+
+        # elif self.type[0] == 'System':
+        #     self.doctor_id = self.message[2]
 
     def setup(self):
         self.left_frame = CTkFrame(self, fg_color='white', corner_radius=0, width=10)
@@ -1045,14 +856,13 @@ class Notification_Box(CTkFrame):
 
 
 class Selector(CTkFrame):
-    def __init__(self, master=None, label=None, desc=None, times=None, **kwargs):
+    def __init__(self, master=None, label=None, times=None, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.configure(fg_color='white')
+        self.configure(fg_color='#f2f2f2')
 
         # Configs
         self.label = label
-        self.description = desc
         self.times = times
 
         # Widgets
@@ -1070,27 +880,49 @@ class Selector(CTkFrame):
         return self.times_options.get()
 
     def create_widgets(self):
-        self.left_frame = CTkFrame(self, fg_color='white')
-        self.right_frame = CTkFrame(self, fg_color='white')
-        self.label_w = CTkLabel(self.left_frame, text=self.label, text_color='black', font=('Arial Bold', 23),
+        self.left_frame = CTkFrame(self, fg_color='#f2f2f2')
+        # self.right_frame = CTkFrame(self, fg_color='#f2f2f2')
+        self.label_w = CTkLabel(self.left_frame, text=self.label, text_color='#737373', font=('Arial Bold', 18),
                                 justify='left')
-        self.desc_w = CTkLabel(self.left_frame, text=self.description, text_color='#cecaca', font=('Arial light', 18))
-        self.times_options = CTkComboBox(self.right_frame, values=self.times, fg_color='white', border_color='black',
+        self.times_options = CTkComboBox(self.left_frame, values=self.times, fg_color='white', border_color='#737373',
                                          button_color='#cecaca', button_hover_color='#a2a1a1')
         self.times_options.set(self.times[0])
-        # self.separator = CTkFrame(self, fg_color='#e5e5e5', height=3)
+        self.separator = CTkFrame(self, fg_color='#cecaca', height=2)
 
     def setup_widgets(self):
-        self.left_frame.pack(side='left', padx=10, pady=10, fill='x', expand=True, ipadx=300)
-        self.right_frame.pack(side='right', padx=10, pady=10, fill='x', expand=True)
-        self.label_w.pack(side='top', padx=10, pady=(10, 0), anchor=W)
-        self.desc_w.pack(padx=10, anchor=W)
-        self.times_options.pack(side='top', padx=10, pady=10, anchor=E, ipadx=8)
-        # self.separator.pack(side='bottom', padx=5, pady=15, fill='x', expand=True)
+        self.left_frame.pack(side='top', padx=5, pady=10, fill='x', expand=True, ipadx=20, anchor=W)
+        # self.right_frame.pack(side='top', padx=5, pady=10, fill='x', expand=True, anchor=E)
+        self.label_w.pack(side='left', padx=10, pady=(10, 0), anchor=W)
+        self.times_options.pack(side='right', padx=10, pady=10, anchor=E, ipadx=4)
+        self.separator.pack(side='top', padx=15, pady=15, fill='x', expand=True)
 
 
-class TimeFrame(CTkFrame):
-    def __init__(self, master=None, **kwargs):
+class Chat_Button(CTkFrame):
+    def __init__(self, master, patient_name, message, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.container = None
+        self.name = patient_name
+        self.recent_message = message
+
+        self.profile_picture = None
+        self.left_frame = None
+        self.right_frame = None
+        self.separator = None
+        self.name_label = None
+        self.message_label = None
+
+    def create_widgets(self):
+        self.left_frame = CTkFrame(self, fg_color='white')
+        self.right_frame = CTkFrame(self, fg_color='white')
+        self.profile_picture = CTkFrame(self.left_frame, fg_color='blue')
+        self.name_label = CTkLabel(self.right_frame, fg_color='white', text_color='#737373',
+                                   font=('Arial bold', 23), justify='left')
+        self.message_label = CTkLabel(self.right_frame, fg_color='white', text_color='#737373',
+                                      font=('Arial light', 17), justify='left')
+
+    def setup_widgets(self):
+        self.left_frame.pack(side='left', padx=10, pady=10, fill='x', expand=True)
+        self.right_frame.pack(padx=10, pady=10, fill='x', expand=True)
+        self.profile_picture.pack(padx=10, pady=10, fill='both', expand=True)
+        self.name_label.pack(side='top', padx=10, pady=25, anchor=W)
+        self.message_label.pack(padx=10, pady=5, anchor=W)

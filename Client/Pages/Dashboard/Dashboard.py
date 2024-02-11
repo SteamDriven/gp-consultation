@@ -2,12 +2,16 @@ from tkinter import *
 from customtkinter import *
 
 from PIL import Image as PILImage
-from Client.Pages.Dashboard.Chat import ChatRoom
+# from Client.Pages.Dashboard.Chat import ChatRoom
+from Client.Pages.Dashboard.ChatBoard import *
 from Client.Pages.Dashboard.Appointments import *
 from Client.Pages.Dashboard.Symptoms import Symptoms
+from Client.Pages.Dashboard.AppointmentDetails import *
+from Client.Pages.Dashboard.AcceptAppointment import *
 from Client.Pages.Dashboard.Notifications import *
 from Client.Pages.Dashboard.SelectTime import *
 from Client.Widgets import ImageButton
+from Client.Pages.Chat import *
 
 from os.path import *
 
@@ -96,7 +100,6 @@ class PatientDashboard(Dashboard):
 
             "request app": RequestAppointments,
             "symptoms": Symptoms,
-            "chat room": ChatRoom,
             'appointments': Appointments,
             'notifications': Notifications,
         }
@@ -125,7 +128,7 @@ class PatientDashboard(Dashboard):
             'Chat': {
                 "path": f'{join(dirname(__file__), "../../Images/Chat.PNG")}',
                 "size": (67, 52),
-                "command": lambda: self.show_frame('chat room')
+                "command": lambda: None
             },
         }
 
@@ -158,6 +161,7 @@ class PatientDashboard(Dashboard):
 
         except Exception as e:
             print(f"Error in show_frame: {e}")
+            raise
 
     def configure_menu(self):
         self.buttons_frame.grid_columnconfigure(0, weight=0)
@@ -185,10 +189,11 @@ class DoctorDashboard(Dashboard):
 
         self.client = client
         self.user_data = user_data
+        self.controller = controller
         self.frames = {}
         self.pages_list = {
 
-            "chat room": ChatRoom,
+            # "chat room": ChatBoard,
             'appointments': Appointments,
             'notifications': Notifications,
             # 'confirm apt': SelectTime,
@@ -228,7 +233,9 @@ class DoctorDashboard(Dashboard):
         for key, value in self.pages_list.items():
             self.frames[key] = value(self.main_frame, self, self.user_data)
 
-        self.show_frame('appointments')
+        # self.add_page('apt details', AppointmentDetails, (self.main_frame, self))
+        # self.controller.frames['test chat'] = Chat2(self.controller.container)
+        # self.controller.show_frame('test chat')
 
     def show_frame(self, cont: str):
         frame = self.frames[cont]
@@ -239,9 +246,13 @@ class DoctorDashboard(Dashboard):
                 for f in self.frames.values():
                     f.pack_forget()
 
-                if cont == 'chat room':
-                    frame.create()
-                    frame.place()
+                # if cont == 'chat room':
+                #     for f in self.controller.frames.values():
+                #         f.pack_forget()
+                #
+                #         frame = ChatBoard(self.controller.container, self, self.user_data, self.client)
+                #     # frame.create()
+                #     # frame.place()
 
                 if cont == 'notifications':
                     frame.update_notifications()
@@ -250,11 +261,11 @@ class DoctorDashboard(Dashboard):
                 frame.tkraise()
 
             else:
-                raise ValueError(f"Frame '{cont}' not found in self.frames.")
+                raise ValueError(f"Frame '{cont}' does not exist.")
 
         except Exception as e:
             print(f"Error in show_frame: {e}")
-            raise
+            raise e
 
     def configure_menu(self):
         self.buttons_frame.grid_columnconfigure(0, weight=0)

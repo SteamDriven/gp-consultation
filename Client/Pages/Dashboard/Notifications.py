@@ -6,7 +6,7 @@ from customtkinter import *
 from configs import *
 
 from Client.Widgets import Notification_Box
-from Client.Pages.Dashboard.SelectTime import *
+from Client.Pages.Dashboard.AcceptAppointment import *
 from Client.helper import *
 
 
@@ -51,6 +51,17 @@ class Notifications(CTkFrame):
         self.title.pack(side='top', pady=(80, 5), padx=30, anchor=W)
         self.container.pack(side='top', fill='both', expand=True)
 
+    def open_chat(self):
+        self.controller.controller.show_frame('chat')
+
+    def invite_patient(self, clinician_id, clinician_name, patient_details):
+        patient_name = ' '.join(patient_details[1:]).title()
+        print(f"Starting new chat with Dr {clinician_name} and Patient: {patient_name}")
+
+        packet = [clinician_name, patient_details[0]]
+        ClientCommands.send_notification(self.client, packet, 'invite')
+        self.controller.controller.show_frame('chat')
+
     def create_placeholders(self):
         status = 'Completed'
         title = 'Booking accepted: Dr John Doe'
@@ -68,21 +79,30 @@ class Notifications(CTkFrame):
         header = message[5]
         timestamp = message[3]
 
-        notification = Notification_Box(self.container, text, header, status, timestamp,
-                                        delete=self.clear_notification, change=self.change_page)
+        if header == 'Booking':
+            notification = Notification_Box(self.container, text, header, status, timestamp,
+                                            delete=self.clear_notification, change=self.invite_patient(
+                    message[1], text[2], text[3]))
+
+        if header == 'Consultation':
+            notification = Notification_Box(self.container, text, header, status, timestamp,
+                                            delete=self.clear_notification, change=self.open_chat)
+        else:
+            notification = Notification_Box(self.container, text, header, status, timestamp,
+                                            delete=self.clear_notification, change=self.change_page)
 
         notification.pack(side='top', padx=20, pady=10, anchor=W, fill='x')
 
         self.notifications[identifier] = notification
         logging.info(f'Notification: {notification.identifier} has been added.')
 
-    def change_page(self, patient_id):
+    def change_page(self, patient_id, data):
         patient_name = self.client.handle_server_messages(Commands.packet_commands['find p'], None, patient_id)
         booking = self.client.handle_server_messages(Commands.packet_commands['find b'], None, patient_id)
 
         print(patient_name, booking)
 
-        frame = SelectTime(self.controller.main_frame, self.controller, booking, patient_name, self.client)
+        frame = AcceptAppointment(self.controller.main_frame, self.controller, booking, patient_name, self.client, data)
 
         for f in self.controller.frames.values():
             f.pack_forget()

@@ -3,6 +3,7 @@ from configs import UserTypes, Commands
 from helper import *
 from methods import *
 from datetime import *
+from schedule import *
 
 import socket
 import json
@@ -10,6 +11,7 @@ import threading
 import string
 import random
 import logging
+import time
 
 
 class Server:
@@ -30,16 +32,71 @@ class Server:
         self.end = False
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_connected = None
-        self.message = {'COMMAND': "", 'CLIENT': [], 'DATA': []}
         self.client_address = None
-        self.message = {"COMMAND": "", "CLIENT": "", "DATA": ""}
+        self.message = {"COMMAND": "", "CLIENT": None, "DATA": None}
         self.connected_users = {}
-        self.appointments = {}
+        self.active_sessions = {}
         self.query = ""
         self.query_data = []
+        self.sent_notifications = set()
 
         self.database = Database('Olinic Management.db')
         self.setup_server()
+
+        every(5).minutes.do(self.check_upcoming_bookings)
+
+    def check_upcoming_bookings(self):
+        upcoming_bookings = self.database.find_booking()
+
+        for booking in upcoming_bookings:
+            booking_reference = booking['Booking_Reference']
+
+            if booking_reference not in self.sent_notifications:
+                patient_id = booking['Patient_ID']
+                clinician_id = booking['Doctor_ID']
+
+                patient_details = self.database.find_patient(patient_id)
+                clinician_details = self.database.find_doctor(clinician_id)
+
+                patient_name = ' '.join(patient_details[1:]).title()
+                clinician_name = ' '.join(clinician_details[1:]).title()
+
+                patient_msg = ServerCommands.format_paragraph(
+                    f"Your appointment with Dr {clinician_name} is scheduled for {booking['Time']}. "
+                    f'The clinician will invite you to this via chat, so be sure to look out for an invite '
+                    f'in your notifications tab shortly.', 120)
+
+                clinician_msg = ServerCommands.format_paragraph(
+                    f"You have an appointment with your patient {patient_name}, scheduled for {booking['Time']}. "
+                    f'You will receive a prompt to invite them for a chat via your notifications shortly.', 120)
+
+                patient_notification = {
+                    'identifier': self.database.generate_code(5),
+                    'user': patient_id,
+                    'message': ['Upcoming Appointment', patient_msg],
+                    'time': ServerCommands.format_time(),
+                    'status': 'Accepted',
+                    'service': 'reminder',
+                }
+                self.database.store_notification(patient_notification)
+
+                clinician_notification = {
+                    'identifier': self.database.generate_code(5),
+                    'user': clinician_id,
+                    'message': ['Upcoming Appointment', clinician_msg, clinician_name, patient_details],
+                    'time': ServerCommands.format_time(),
+                    'status': 'Accepted',
+                    'service': 'reminder',
+                }
+                self.database.store_notification(clinician_notification)
+
+                self.sent_notifications.add(booking_reference)
+                logging.info(f'Sent notification: {booking_reference}')
+
+                self.active_sessions[booking_reference] = {
+                    'clinician': [clinician_id, clinician_name],
+                    'patient': [patient_id, patient_name],
+                }
 
     def stop_server(self):
         if self.server_socket:
@@ -79,6 +136,25 @@ class Server:
 
                 else:
                     message = json.loads(data.decode())
+
+                    if message['COMMAND'] == Commands.packet_commands['notifications']['invite']:
+                        patient_id = message['DATA'][1]
+                        clinician = message['DATA'][0]
+
+                        additional_info = ServerCommands.format_paragraph(('To accept this invitation and join the '
+                                                                           'chat, please select the option'
+                                                                           'below and you will be redirected.'), 120)
+
+                        notification = {
+                            'identifier': self.database.generate_code(5),
+                            'user': patient_id,
+                            'message': [f'Dr {clinician} has invited you to a consultation.', additional_info],
+                            'time': ServerCommands.format_time(),
+                            'status': 'Accepted',
+                            'service': 'Consultation',
+                        }
+
+                        self.database.store_notification(notification)
 
                     if message['COMMAND'] == Commands.packet_commands['notifications']['send patient']:
                         doctor_id = self.get_connected_user(client)
@@ -158,7 +234,6 @@ class Server:
                         user_data = PatientData().from_dict(message['DATA'])
 
                         patient_to_assign = message['DATA']['user']
-
                         doctor_to_assign = message['DATA']['assigned_doctor']
 
                         if doctor_to_assign is None:
@@ -196,21 +271,25 @@ class Server:
 
                             doctor_message = (f"You have been requested for an appointment by Patient: "
                                               f"{patient_name} {patient_id}"
-                                              f"The time of the appointment is: {time_of_appt}\n and the date"
+                                              f"The time of the appointment is: {time_of_appt}\n and the date "
                                               f"is: {date_of_appt}.")
 
-                            patient_message = (f"You have scheduled a request for an appointment with DR"
-                                               f"{doctor_name} {doctor_id}."
+                            patient_message = (f"You have scheduled a request for an appointment with Dr "
+                                               f"{doctor_name} {doctor_id}. "
                                                f"The appointment is set for {date_of_appt} at {time_of_appt}.\n"
                                                f"You will receive a confirmation upon acceptance of your appointment.")
 
                             status = 'Pending'
                             current_timestamp = ServerCommands.format_time()
 
+                            doctor_message = ServerCommands.format_paragraph(doctor_message, 120)
+                            patient_message = ServerCommands.format_paragraph(patient_message, 120)
+
                             doctor_notification = {
                                 'identifier': self.database.generate_code(5),
                                 'user': doctor_id,
-                                'message': [f'New Booking: Dr {doctor_name}', doctor_message, patient_id],
+                                'message': [f'New Booking: Dr {doctor_name}', doctor_message, patient_id,
+                                            symptoms, images],
                                 'time': current_timestamp,
                                 'status': status,
                                 'service': 'patient',
@@ -244,23 +323,62 @@ class Server:
                             self.message = {'COMMAND': "", 'CLIENT': [], 'DATA': []}
 
                     if message['COMMAND'] == Commands.chat_commands['broadcast']:
-                        logging.info(f">: User {message['CLIENT']} has said: {message['DATA'][1]}")
+                        current_user = self.get_connected_user(client)
+                        message = message['DATA']
 
-                        for key, user_socket in self.connected_users.items():
-                            if user_socket == self.connected_users[message['CLIENT']]:
-                                logging.debug(f"Skipping USER {key} cause it's matches Sender id.")
-                                continue
+                        for booking_ref, roles in self.active_sessions:
+                            clinician_id, clinician_name = roles.get('clinician', [None, None])
+                            patient_id, patient_name = roles.get('patient', [None, None])
 
-                            if key == self.connected_users[message['DATA'][0]]:
-                                logging.debug(f"Sending a message to USER: {key}")
-                                name = self.database.check_records(message)
+                            recipient = None
+
+                            if current_user in [clinician_id, patient_id]:
+                                if current_user == clinician_id:
+                                    role = 'Doctor'
+                                    name = clinician_name
+                                    recipient = [patient_id, patient_name]
+
+                                else:
+                                    role = 'Patient'
+                                    name = patient_name
+                                    recipient = [clinician_id, clinician_name]
+
+                                logging.info(f"User {current_user} was found in active session as {role} for booking "
+                                             f"{booking_ref}")
+
+                                self.message['COMMAND'] = Commands.chat_commands['broadcast']
+                                self.message['CLIENT'] = current_user
+                                self.message['DATA'] = [role, name, message]
+
+                                client.send(json.dumps(self.message).encode())
+
                                 self.message['COMMAND'] = Commands.chat_commands['receive']
-                                self.message['CLIENT'] = [message['CLIENT'], name]
-                                self.message['DATA'] = message['DATA'][1]
+                                self.message['CLIENT'] = recipient
+                                self.message['DATA'] = [role, name, message]
 
-                                user_socket.send(json.dumps(self.message).encode())
+                                self.connected_users[recipient].send(json.dumps(self.message).encode())
+                                break
 
-                                self.message = {'COMMAND': "", 'CLIENT': [], 'DATA': []}
+                            else:
+                                logging.info(f"User {current_user} was not found in any active session")
+
+
+
+                        # for key, user_socket in self.connected_users.items():
+                        #     if user_socket == self.connected_users[message['CLIENT']]:
+                        #         logging.debug(f"Skipping USER {key} cause it's matches Sender id.")
+                        #         continue
+                        #
+                        #     if key == self.connected_users[message['DATA'][0]]:
+                        #         logging.debug(f"Sending a message to USER: {key}")
+                        #         name = self.database.check_records(message)
+                        #         self.message['COMMAND'] = Commands.chat_commands['receive']
+                        #         self.message['CLIENT'] = [message['CLIENT'], name]
+                        #         self.message['DATA'] = message['DATA'][1]
+                        #
+                        #         user_socket.send(json.dumps(self.message).encode())
+                        #
+                        #         self.message = {'COMMAND': "", 'CLIENT': [], 'DATA': []}
 
                     if message['COMMAND'] == Commands.packet_commands['register']:
                         logging.info(">: Client requested to be registered to the database.")

@@ -1,4 +1,5 @@
 import json
+import textwrap
 from datetime import datetime
 from tkinter import messagebox
 from configs import *
@@ -18,11 +19,8 @@ class ClientCommands:
         return client.handle_server_messages(Commands.packet_commands['login'], None, user_data)
 
     @staticmethod
-    def handle_chat(client, message, command, user, assigned):
-        print(f">: User {user} has sent message: {message} with command: {command}")
-
-        message = [assigned, message]
-        client.send_chat_message(message, command, user)
+    def handle_chat(client, message, command):
+        client.send_chat_message(message, command)
 
     @staticmethod
     def update_notes(command, client):
@@ -45,6 +43,11 @@ class ClientCommands:
                                       data=packet, receive=False)
 
     @staticmethod
+    def send_notification(client, packet, command):
+        client.handle_server_messages(command=Commands.packet_commands['notifications'][command], client=None,
+                                      data=packet, receive=False)
+
+    @staticmethod
     def generate_id():
         """
            Generate a unique user ID.
@@ -59,6 +62,13 @@ class ClientCommands:
         now = datetime.now()
         formatted_time = now.strftime('%d %b %Y at %I:%M %p')
         return formatted_time
+
+    @staticmethod
+    def format_paragraph(input_string, width):
+        if len(input_string) < width:
+            return input_string
+        else:
+            return textwrap.fill(input_string, width=width)
 
     @staticmethod
     def convert_to_minutes(time_str):
@@ -107,3 +117,24 @@ class ClientCommands:
     def set_appointment(client, role, command, user_data):
         print(">: Preparing info to setup appointment on server.")
         client.handle_server_messages(command, role, user_data, False)
+
+    @staticmethod
+    def show_frame(cont: str, dict):
+        if dict[cont]:
+
+            try:
+                selected_page = dict[cont]
+                for p in dict.values():
+                    if p:
+                        p.pack_forget()
+
+                    selected_page.pack(side="top", fill="both", expand=True)
+                    selected_page.tkraise()
+
+            except Exception as e:
+                print(e)
+                raise
+
+    @staticmethod
+    def add_page(frame, values, dict, cont: str):
+        dict[cont] = frame(*values)

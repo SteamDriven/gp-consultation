@@ -4,6 +4,7 @@ import logging
 import random
 import hashlib
 import string
+from datetime import *
 
 from os.path import *
 
@@ -95,7 +96,15 @@ tables = {
               foreign key (Patient_ID) references PATIENT (Patient_ID)
               foreign key (Clinician_ID) references CLINICIAN (Clinician_ID)
               foreign key (Item_ID) references MEDICATIONS (Item_ID)
-        '''}
+        ''',
+    "CHATS": '''
+            
+            Booking_Reference   text,
+            Message_History     text,
+            
+            primary key (Booking_Reference)
+    '''
+}
 
 
 # CLASSES
@@ -124,6 +133,15 @@ class Database:  # Created a class for Database along with necessary attributes
 
         finally:
             self.conn.commit()
+
+    def request_chat_rooms(self):
+        self.sql = '''SELECT * FROM BOOKINGS WHERE Status = ?'''
+        self.query(self.sql, ('Chat room',))
+
+        result = self.cursor.fetchall()
+        if result:
+            return result
+        return False
 
     def find_doctor(self, user_data):
         self.sql = '''SELECT Clinician_ID, First_Name, Last_Name FROM ClINICIAN WHERE Clinician_ID=?'''
@@ -298,24 +316,37 @@ class Database:  # Created a class for Database along with necessary attributes
         self.write_info_txt(user_information, join(dirname(__file__), "../user_info.txt"))
         return True
 
-    def find_booking(self, user_id):
-        print(user_id)
+    def find_booking(self, user_id=None):
+        if user_id is None:
+            current_time = time.strftime('%H:%M')
+            self.sql = '''SELECT * FROM BOOKINGS WHERE Date = ? AND Time > ? AND Time < ?'''
 
-        self.sql = '''SELECT * FROM BOOKINGS WHERE CLINICIAN_ID = ?'''
-        self.query(self.sql, (user_id,))
+            # Used ChatGPT to help me figure out calculating the time constraint here
+            today = time.strftime('%a %d %Y')
+            next_hour = (datetime.now() + timedelta(hours=1)).strftime('%H:%M')
 
-        result = self.cursor.fetchone()
+            self.query(self.sql, (today, current_time, next_hour))
+            upcoming_bookings = self.cursor.fetchall()
 
-        if not result:
-            logging.info(f'{user_id} is not a CLINICIAN_ID, must be a PATIENT.')
-            self.sql = '''SELECT * FROM BOOKINGS WHERE Patient_ID = ?'''
+            return upcoming_bookings
+        else:
+            print(user_id)
+
+            self.sql = '''SELECT * FROM BOOKINGS WHERE CLINICIAN_ID = ?'''
             self.query(self.sql, (user_id,))
 
             result = self.cursor.fetchone()
-            return result
 
-        logging.info(f'{user_id} is a Clinician, finding assigned patients.')
-        return result
+            if not result:
+                logging.info(f'{user_id} is not a CLINICIAN_ID, must be a PATIENT.')
+                self.sql = '''SELECT * FROM BOOKINGS WHERE Patient_ID = ?'''
+                self.query(self.sql, (user_id,))
+
+                result = self.cursor.fetchone()
+                return result
+
+            logging.info(f'{user_id} is a Clinician, finding assigned patients.')
+            return result
 
     def update_booking(self, column, newValue, patient, status):
         print(column, newValue, patient)

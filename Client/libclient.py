@@ -27,7 +27,7 @@ class Client:
 
     def send_chat_message(self, message, command, user):
         if command == Commands.chat_commands['broadcast']:
-            self.handle_server_messages(Commands.chat_commands['broadcast'], user, message, False)
+            self.handle_server_messages(Commands.chat_commands['broadcast'],  client=None, data=message, receive=True)
 
         elif command == Commands.chat_commands['announcement']:
             self.handle_server_messages(Commands.chat_commands['announcement'], None, message, False)
@@ -64,6 +64,9 @@ class Client:
                 return received["DATA"]
 
             if received['COMMAND'] == Commands.packet_commands['find p']:
+                return received['DATA']
+
+            if received['COMMAND'] == Commands.chat_commands['broadcast']:
                 return received['DATA']
 
             if received['COMMAND'] == Commands.packet_commands['find b']:
