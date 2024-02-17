@@ -89,11 +89,14 @@ class ChatEntry(CTkFrame):
     DEFAULT_ENTRY_FONT = ('Arial Light', 15)
     DEFAULT_FONT = ('Arial Bold', 25)
 
-    def __init__(self, master=None, placeholder='Type a message', command=None, **kwargs):
+    def __init__(self, master=None, placeholder='Type a message', callback=None, **kwargs):
         super().__init__(master, **kwargs)
 
+        self.send_button = None
+        self.txt = None
+
         self.placeholder = placeholder
-        self.command = command
+        self.callback = callback
         self.configure(fg_color='white', corner_radius=3, border_color='#e7e5e5', border_width=3)
 
         self.setup_box()
@@ -105,7 +108,7 @@ class ChatEntry(CTkFrame):
 
         self.txt = Label(self, text=self.placeholder, bg='white', font=self.DEFAULT_ENTRY_FONT, side='left',
                          color=self.DEFAULT_TEXT_COL, state='special')
-        self.send_button = CTkButton(self.txt, text='', fg_color='white', command=self.command, hover=False,
+        self.send_button = CTkButton(self.txt, text='', fg_color='white', command=self.callback, hover=False,
                                      image=image_ck, width=5)
 
     def place_box(self):
@@ -568,6 +571,9 @@ class Calendar(CTkFrame):
         if self.year and self.month:
             self.current_week = self.get_current_week()
 
+        if today.day == calendar.monthrange(self.year, self.month)[1]:
+            self.current_week = min(self.current_week, len(calendar.monthcalendar(self.year, self.month)) - 1)
+
     @staticmethod
     def get_day(date):
         if date:
@@ -618,6 +624,11 @@ class Calendar(CTkFrame):
 
             for i, day in enumerate(week):
                 self.display_day(i, day)
+
+        else:
+            print(f"Invalid current_week: {self.current_week}. Resetting to 0.")
+            self.current_week = 0
+            self.display_week()
 
     def display_day(self, column, day):
         frame = DateFrame(self.day_frame, colour='#f2f2f2')
@@ -796,20 +807,21 @@ class Notification_Box(CTkFrame):
             self.patient_id = self.message[2]
 
             if self.right_frame:
-                self.right_frame.bind('<Double-Button-1>', lambda event: self.change_func(self.patient_id, message[3:]))
+                self.right_frame.bind('<1>', lambda event: self.change_func(self.patient_id, message[3:]))
 
         elif self.type[0] == 'Booking':
             print('Notification type is BOOKING. Changing state.')
 
             if self.right_frame:
                 start_chat = CTkButton(self.right_frame, text='Start a new chat', text_color='white', fg_color='#b1c9eb'
-                                       ,font=('Arial bold', 20), command=lambda: self.change_func)
+                                       ,font=('Arial bold', 20), command=self.change_func)
                 start_chat.pack(padx=10, anchor=W, ipadx=5)
 
         elif self.type[0] == 'Consultation':
             if self.right_frame:
-                accept_invite = CTkButton(self.right_frame, text='Start a new chat', text_color='white', fg_color='#b1c9eb'
-                                       ,font=('Arial bold', 20), command=lambda: self.change_func)
+                accept_invite = CTkButton(self.right_frame, text='Start a new chat', text_color='white',
+                                          fg_color='#b1c9eb', font=('Arial bold', 20), command=self.change_func)
+                accept_invite.pack(padx=10, anchor=W, ipadx=5)
 
         # elif self.type[0] == 'System':
         #     self.doctor_id = self.message[2]

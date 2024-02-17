@@ -4,7 +4,7 @@ import logging
 import random
 import hashlib
 import string
-from datetime import *
+from datetime import datetime, timedelta
 
 from os.path import *
 
@@ -157,6 +157,7 @@ class Database:  # Created a class for Database along with necessary attributes
         self.query(self.sql, (user_id,))
 
         result = self.cursor.fetchall()
+
         if result:
             return result
         else:
@@ -317,36 +318,54 @@ class Database:  # Created a class for Database along with necessary attributes
         return True
 
     def find_booking(self, user_id=None):
-        if user_id is None:
-            current_time = time.strftime('%H:%M')
-            self.sql = '''SELECT * FROM BOOKINGS WHERE Date = ? AND Time > ? AND Time < ?'''
+        try:
+            if user_id is None:
+                print('Looking for active bookings')
+                current_time = datetime.now().strftime('%I:%M %p')
+                self.sql = '''SELECT * FROM BOOKINGS 
+                              WHERE Date = ? 
+                              AND JSON_EXTRACT(Time, '$[0]') > ? 
+                              AND JSON_EXTRACT(Time, '$[0]') < ?
+                            '''
 
-            # Used ChatGPT to help me figure out calculating the time constraint here
-            today = time.strftime('%a %d %Y')
-            next_hour = (datetime.now() + timedelta(hours=1)).strftime('%H:%M')
+                # Used ChatGPT to help me figure out calculating the time constraint here
+                today = datetime.now().strftime('%Y-%m-%d')
+                next_hour = (datetime.now() + timedelta(hours=1)).strftime('%I:%M %p')
 
-            self.query(self.sql, (today, current_time, next_hour))
-            upcoming_bookings = self.cursor.fetchall()
+                logging.debug(f'Today: {today}, Current Time: {current_time}, Next Hour: {next_hour}')
 
-            return upcoming_bookings
-        else:
-            print(user_id)
+                self.query(self.sql, (today, current_time, next_hour))
+                upcoming_bookings = self.cursor.fetchall()
 
-            self.sql = '''SELECT * FROM BOOKINGS WHERE CLINICIAN_ID = ?'''
-            self.query(self.sql, (user_id,))
+                logging.info(f'Found {len(upcoming_bookings)} upcoming bookings')
+                return upcoming_bookings
 
-            result = self.cursor.fetchone()
+            else:
+                print(user_id)
 
-            if not result:
-                logging.info(f'{user_id} is not a CLINICIAN_ID, must be a PATIENT.')
-                self.sql = '''SELECT * FROM BOOKINGS WHERE Patient_ID = ?'''
+                self.sql = '''SELECT * FROM BOOKINGS WHERE CLINICIAN_ID = ?'''
                 self.query(self.sql, (user_id,))
 
                 result = self.cursor.fetchone()
+
+                if not result:
+                    logging.info(f'{user_id} is not a CLINICIAN_ID, must be a PATIENT.')
+                    self.sql = '''SELECT * FROM BOOKINGS WHERE Patient_ID = ?'''
+                    self.query(self.sql, (user_id,))
+
+                    result = self.cursor.fetchone()
+                    return result
+
+                logging.info(f'{user_id} is a Clinician, finding assigned patients.')
                 return result
 
-            logging.info(f'{user_id} is a Clinician, finding assigned patients.')
-            return result
+        except sqlite3.Error as sql_error:
+            logging.warning(f"SQLite error in find_booking: {sql_error}")
+            raise
+
+        except Exception as e:
+            logging.error(f"An unexpected error occurred in find_booking: {e}")
+            raise
 
     def update_booking(self, column, newValue, patient, status):
         print(column, newValue, patient)
@@ -358,6 +377,7 @@ class Database:  # Created a class for Database along with necessary attributes
 
         except sqlite3.Error as error:
             print(f"Failed to update sqlite table BOOKINGS: {error}")
+            raise
 
     def get_booking_reference(self, patient_id, doctor_id):
         self.sql = '''SELECT Booking_Reference FROM BOOKINGS WHERE Clinician_ID = ? AND Patient_ID = ?'''

@@ -28,15 +28,15 @@ class Notifications(CTkFrame):
 
     def update_notifications(self):
         notifications = ClientCommands.update_notes(Commands.packet_commands['notifications']['search'], self.client)
+        print("Received data:", notifications)
 
         if notifications is not None:
             for notification in notifications:
-                print(notification[0])
 
                 if self.notifications.get(notification[0]) is None:
                     print(f"{notification[0]} doesn't exist. Creating it now!")
-                    self.create_notification(notification)
 
+                    self.create_notification(notification)
                 continue
         else:
             print("No notifications. Try again later.")
@@ -50,17 +50,15 @@ class Notifications(CTkFrame):
     def place(self):
         self.title.pack(side='top', pady=(80, 5), padx=30, anchor=W)
         self.container.pack(side='top', fill='both', expand=True)
+        print('Notification screen placed')
 
-    def open_chat(self):
-        self.controller.controller.show_frame('chat')
-
-    def invite_patient(self, clinician_id, clinician_name, patient_details):
+    def invite_patient(self, clinician_name, patient_details):
         patient_name = ' '.join(patient_details[1:]).title()
         print(f"Starting new chat with Dr {clinician_name} and Patient: {patient_name}")
 
         packet = [clinician_name, patient_details[0]]
         ClientCommands.send_notification(self.client, packet, 'invite')
-        self.controller.controller.show_frame('chat')
+        self.controller.open_chat()
 
     def create_placeholders(self):
         status = 'Completed'
@@ -79,14 +77,14 @@ class Notifications(CTkFrame):
         header = message[5]
         timestamp = message[3]
 
-        if header == 'Booking':
+        if header == 'booking':
             notification = Notification_Box(self.container, text, header, status, timestamp,
-                                            delete=self.clear_notification, change=self.invite_patient(
-                    message[1], text[2], text[3]))
-
-        if header == 'Consultation':
+                                            delete=self.clear_notification, change=lambda: self.invite_patient(
+                                                                                    text[2], text[3]))
+        elif header == 'consultation':
+            print('consultation type')
             notification = Notification_Box(self.container, text, header, status, timestamp,
-                                            delete=self.clear_notification, change=self.open_chat)
+                                            delete=self.clear_notification, change=lambda: self.controller.open_chat())
         else:
             notification = Notification_Box(self.container, text, header, status, timestamp,
                                             delete=self.clear_notification, change=self.change_page)
@@ -102,15 +100,9 @@ class Notifications(CTkFrame):
 
         print(patient_name, booking)
 
-        frame = AcceptAppointment(self.controller.main_frame, self.controller, booking, patient_name, self.client, data)
-
-        for f in self.controller.frames.values():
-            f.pack_forget()
-
-        print('Cleared pages, displaying time selection.')
-
-        frame.pack(side="top", fill="both", expand=True)
-        frame.tkraise()
+        values = (self.controller.main_frame, self.controller, booking, patient_name, self.client, data)
+        ClientCommands.add_page(AcceptAppointment, values, self.controller.frames, 'accept apt')
+        ClientCommands.show_frame('accept apt', self.controller.frames)
 
     def clear_notification(self, key):
         del self.notifications[key]

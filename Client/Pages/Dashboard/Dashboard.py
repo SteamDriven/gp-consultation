@@ -1,3 +1,4 @@
+import traceback
 from tkinter import *
 from customtkinter import *
 
@@ -8,7 +9,7 @@ from Client.Pages.Dashboard.Appointments import *
 from Client.Pages.Dashboard.Symptoms import Symptoms
 from Client.Pages.Dashboard.AppointmentDetails import *
 from Client.Pages.Dashboard.AcceptAppointment import *
-from Client.Pages.Dashboard.Notifications import *
+from Client.Pages.Dashboard.Notifications import Notifications
 from Client.Pages.Dashboard.SelectTime import *
 from Client.Widgets import ImageButton
 from Client.Pages.Chat import *
@@ -108,7 +109,7 @@ class PatientDashboard(Dashboard):
             'Appointments': {
                 "path": f'{join(dirname(__file__), "../../Images/Appointments.PNG")}',
                 "size": (56, 60),
-                "command": lambda: self.show_frame("request app")
+                "command": lambda cont='appointments': ClientCommands.show_frame(cont, self.frames)
             },
             'Profile': {
                 "path": f'{join(dirname(__file__), "../../Images/Profile.PNG")}',
@@ -123,45 +124,30 @@ class PatientDashboard(Dashboard):
             'Notifications': {
                 "path": f'{join(dirname(__file__), "../../Images/Notifications.PNG")}',
                 "size": (58, 58),
-                "command": lambda: self.show_frame("notifications")
+                "command": lambda cont='notifications': ClientCommands.show_frame(cont, self.frames)
             },
             'Chat': {
                 "path": f'{join(dirname(__file__), "../../Images/Chat.PNG")}',
                 "size": (67, 52),
-                "command": lambda: None
+                "command": None
             },
         }
 
-        self.dash_btn.configure(command=lambda: self.show_frame('dashboard'))
+        # self.dash_btn.configure(command=lambda: ClientCommands.show_frame('dashboard', self.main_frame))
 
         self.configure_menu()
+        self.create_pages()
+
+    def create_pages(self):
         for key, value in self.pages_list.items():
             self.frames[key] = value(self.main_frame, self, self.user_data)
 
-        self.show_frame('appointments')
+        ClientCommands.show_frame('request app', self.frames)
+        print('Showing page to request an appointment.')
 
-    def show_frame(self, cont: str):
-        frame = self.frames[cont]
-        print('Displaying frame:', cont)
-
-        try:
-            for f in self.frames.values():
-                print(f)
-                f.pack_forget()
-
-            if cont == 'chat room':
-                frame.create()
-                frame.place()
-
-            if cont == 'notifications':
-                frame.update_notifications()
-
-            frame.pack(side="top", fill="both", expand=True)
-            frame.tkraise()
-
-        except Exception as e:
-            print(f"Error in show_frame: {e}")
-            raise
+    def open_chat(self):
+        ClientCommands.show_frame('chat', self.controller.frames)
+        self.controller.frames['chat'].start()
 
     def configure_menu(self):
         self.buttons_frame.grid_columnconfigure(0, weight=0)
@@ -191,6 +177,7 @@ class DoctorDashboard(Dashboard):
         self.user_data = user_data
         self.controller = controller
         self.frames = {}
+
         self.pages_list = {
 
             # "chat room": ChatBoard,
@@ -218,12 +205,12 @@ class DoctorDashboard(Dashboard):
             'Notifications': {
                 "path": f'{join(dirname(__file__), "../../Images/Notifications.PNG")}',
                 "size": (58, 58),
-                "command": lambda: self.show_frame("notifications")
+                "command": lambda cont="notifications": ClientCommands.show_frame(cont, self.frames)
             },
             'Chat': {
                 "path": f'{join(dirname(__file__), "../../Images/Chat.PNG")}',
                 "size": (67, 52),
-                "command": lambda: self.show_frame('chat room')
+                "command": None
             },
         }
 
@@ -237,35 +224,35 @@ class DoctorDashboard(Dashboard):
         # self.controller.frames['test chat'] = Chat2(self.controller.container)
         # self.controller.show_frame('test chat')
 
-    def show_frame(self, cont: str):
-        frame = self.frames[cont]
-        print('Displaying frame:', cont)
-
-        try:
-            if frame is not None:
-                for f in self.frames.values():
-                    f.pack_forget()
-
-                # if cont == 'chat room':
-                #     for f in self.controller.frames.values():
-                #         f.pack_forget()
-                #
-                #         frame = ChatBoard(self.controller.container, self, self.user_data, self.client)
-                #     # frame.create()
-                #     # frame.place()
-
-                if cont == 'notifications':
-                    frame.update_notifications()
-
-                frame.pack(side="top", fill="both", expand=True)
-                frame.tkraise()
-
-            else:
-                raise ValueError(f"Frame '{cont}' does not exist.")
-
-        except Exception as e:
-            print(f"Error in show_frame: {e}")
-            raise e
+    # def show_frame(self, cont: str):
+    #     frame = self.frames[cont]
+    #     print('Displaying frame:', cont)
+    #
+    #     try:
+    #         if frame is not None:
+    #             for f in self.frames.values():
+    #                 f.pack_forget()
+    #
+    #             # if cont == 'chat room':
+    #             #     for f in self.controller.frames.values():
+    #             #         f.pack_forget()
+    #             #
+    #             #         frame = ChatBoard(self.controller.container, self, self.user_data, self.client)
+    #             #     # frame.create()
+    #             #     # frame.place()
+    #
+    #             if cont == 'notifications':
+    #                 frame.update_notifications()
+    #
+    #             frame.pack(side="top", fill="both", expand=True)
+    #             frame.tkraise()
+    #
+    #         else:
+    #             raise ValueError(f"Frame '{cont}' does not exist.")
+    #
+    #     except Exception as e:
+    #         print(f"Error in show_frame: {e}")
+    #         raise e
 
     def configure_menu(self):
         self.buttons_frame.grid_columnconfigure(0, weight=0)
@@ -282,3 +269,6 @@ class DoctorDashboard(Dashboard):
                                  command=info['command'])
 
             button.pack(pady=30, anchor=W)
+
+    def open_chat(self):
+        ClientCommands.show_frame('chat', self.controller.frames)

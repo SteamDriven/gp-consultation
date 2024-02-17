@@ -1,3 +1,4 @@
+import json
 from tkinter import *
 from customtkinter import *
 from os.path import *
@@ -64,17 +65,14 @@ class AcceptAppointment(CTkFrame):
         self.symptoms = data[0]
         self.images = data[1]
 
-        # self.booking = booking
-        # self.patient_name = 'Adriel McBean'
-        # self.patient_id = "1234"
-        # self.timeOfDay = 'Morning'
-
         self.detail_labels = []
 
         self.booking = booking
         self.patient_name = ' '.join(patientName[1:]).title()
         self.patient_id = patientName[0]
         self.timeOfDay = self.booking[4]
+
+        print(self.timeOfDay)
 
         self.create_widgets()
         self.setup_widgets()
@@ -216,7 +214,7 @@ class AcceptAppointment(CTkFrame):
                    f"consultation will be at {self.start_time} for {allocated_time}.\n"
                    f"The method of consultation will be via online chat.")
 
-        packet = ['Time', allocated_time, self.patient_id, ['Status', 'Accepted']]
+        packet = ['Time', [start_time, allocated_time], self.patient_id, ['Status', 'Accepted']]
         packet_2 = [self.patient_id, message, ClientCommands.format_time(), 'Accepted', 'doctor']
 
         ClientCommands.update_booking(self.client, packet)

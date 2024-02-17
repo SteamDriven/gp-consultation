@@ -25,7 +25,7 @@ class Client:
             self.client_socket.close()
             logging.info(f">: Connection to socket on HOST {self.host} has been closed!")
 
-    def send_chat_message(self, message, command, user):
+    def send_chat_message(self, message, command):
         if command == Commands.chat_commands['broadcast']:
             self.handle_server_messages(Commands.chat_commands['broadcast'],  client=None, data=message, receive=True)
 
@@ -44,7 +44,12 @@ class Client:
 
     def receive_message(self):
         try:
-            received_data = self.client_socket.recv(1024).decode()
+            received_data = self.client_socket.recv(8192)
+
+            print("Received Data:", received_data)
+            print("Received Data Length:", len(received_data))
+
+            received_data = received_data.decode()
 
             if not received_data:
                 return None
@@ -59,9 +64,6 @@ class Client:
 
         if receive:
             received = self.receive_message()
-
-            if received["COMMAND"] == Commands.packet_commands['referral']:
-                return received["DATA"]
 
             if received['COMMAND'] == Commands.packet_commands['find p']:
                 return received['DATA']

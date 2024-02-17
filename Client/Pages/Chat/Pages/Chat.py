@@ -4,8 +4,10 @@ import threading
 
 from customtkinter import *
 
-from Client.Widgets import MessageBox, cmds, appt_cdms, Treeview, Label, ChatEntry, UploadFrame
+from Client.Widgets import MessageBox, Treeview, Label, ChatEntry, UploadFrame
 from Client.helper import ClientCommands
+
+from configs import Commands
 
 
 class Chat(CTkFrame):
@@ -14,22 +16,23 @@ class Chat(CTkFrame):
     DEFAULT_CHAT_BG = 'white'
     MESSAGE_WIDTH = 80
 
-    def __init__(self, master=None, title='Consultation', client=None, user_data=None, callback=None, **kwargs):
+    def __init__(self, master=None, client=None, title='Consultation', user_data=None, callback=None, **kwargs):
         super().__init__(master, **kwargs)
 
         self.configure(fg_color='white')
 
         # Constants
         self.current_state = "greeting"
-        today = (datetime.now().date()).strftime('%A')
+        self.today = (datetime.now().date()).strftime('%A')
 
         # Variables
         self.user_data = user_data
         self.client = client
         self.title = title
         self.callback = callback
+
         self.announcements = {
-            1: [today, 'date'],
+            1: [self.today, 'date'],
             2: ['You created a new consultation', 'message'],
             3: ['You invited Adriel McBean to the consultation', 'message'],
         }
@@ -66,12 +69,13 @@ class Chat(CTkFrame):
         self.left_frame = None
         self.right_frame = None
         self.spacer = None
+        self.header = None
 
         # Methods
         self.create_widgets()
         self.setup()
 
-        self.start_message_listener()
+        # self.start_message_listener()
         # self.create_service_message(self.example_message_server)
         # self.create_client_message(self.example_message_patient, '#f2f2f2', ['Adriel McBean', 'Patient'],
         #                            'sender')
@@ -91,12 +95,14 @@ class Chat(CTkFrame):
         logging.info(f"Listening for messages.")
         while True:
             messages = self.client.receive_message()
-            logging.info(f"Received message: {messages}")
 
-            if messages['COMMAND'] == cmds.chat_commands['receive']:
-                role, name, message = messages['DATA'][0], messages['DATA'][1], messages['DATA'][2]
+            if messages:
+                logging.info(f"Received message: {messages}")
 
-                self.create_client_message(message, '#e8ebfa', [name, role], 'recipient')
+                if messages['COMMAND'] == Commands.chat_commands['receive']:
+                    role, name, message = messages['DATA'][0], messages['DATA'][1], messages['DATA'][2]
+
+                    self.create_client_message(message, '#e8ebfa', [name, role], 'recipient')
 
     def start_message_listener(self):
         logging.info(f"Creating message listener.")
@@ -108,7 +114,7 @@ class Chat(CTkFrame):
         self.label = CTkLabel(self.header, text=self.title, fg_color='white', text_color='grey',
                               font=('Arial light', 23))
         self.container = CTkScrollableFrame(self, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
-        self.chat_box = ChatEntry(self, command=self.send_message())
+        self.chat_box = ChatEntry(self, callback=self.send_message)
 
     def disable_chat(self):
         self.chat_box.pack_forget()
@@ -117,7 +123,6 @@ class Chat(CTkFrame):
         self.header.pack(side='top', fill='x')
         self.label.pack(side='left', padx=10, pady=10)
         self.container.pack(side='top', fill='both', expand=True)
-        self.introduction()
 
         self.chat_box.pack(side='bottom', fill='x', pady=(15, 2))
 
@@ -125,14 +130,16 @@ class Chat(CTkFrame):
         message = self.chat_box.txt.get_message()
         return message
 
-    def send_message(self, recipient):
+    def send_message(self):
         message = self.get_message()
-        username = ' '.join(self.user_data.user[1:]).title()
 
-        message = ClientCommands.handle_chat(self.client, message, cmds.chat_commands['broadcast'])
+        message = ClientCommands.handle_chat(self.client, message, Commands.chat_commands['broadcast'])
         role, name, user_message = message[0], message[1], message[2]
 
-        self.create_client_message(user_message, '#f2f2f2', [name, role], 'origin')
+        if message:
+            print(message)
+
+            self.create_client_message(user_message, '#f2f2f2', [name, role], 'origin')
 
     def create_spacer(self, parent, anchor):
         spacer = CTkFrame(parent, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)
@@ -183,8 +190,7 @@ class aiChat(Chat):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # self.username = ' '.join(self.user_data.user[1][1:]).title()
-        self.username = ''
+        self.username = ' '.join(self.user_data.user[1][1:]).title()
         self.ai_states = {
             'greeting': (f"Hello, {self.username}! "
                          "Please describe your symptoms in detail.\n"
@@ -220,18 +226,28 @@ class aiChat(Chat):
                           "has been accepted. Be sure to keep a look out on your NOTIFICATIONS tab.\n\nHave a nice day!"
                           )}
 
+        self.announcements = {
+            1: [self.today, 'date'],
+            2: ['Service has created a new chat', 'message'],
+            3: [f'Service invited {self.username} to the consultation', 'message'],
+        }
+        self.introduction()
+
         self.title = 'Discuss your symptoms'
-        self.chat_box.configure(command=self.handle_ai_chat)
-        self.create_service_message(f"{self.ai_states[self.current_state]}")
+        self.chat_box.send_button.configure(command=lambda: self.handle_ai_chat())
+        self.create_service_message(self.ai_states[self.current_state])
+
+        self.doctor_list = None
+        self.assigned_doctor = None
 
     def ignore_upload(self):
         self.upload_frame.destroy()
         self.upload_frame = None
 
-        self.create_service_message(f"{self.ai_states['no-images']}")
+        self.create_service_message(self.ai_states['no-images'])
 
         self.current_state = 'prompt'
-        self.create_service_message(f"{self.ai_states[self.current_state]}")
+        self.create_service_message(self.ai_states[self.current_state])
         self.current_state = 'accepted'
 
     def handle_ai_chat(self):
@@ -255,14 +271,11 @@ class aiChat(Chat):
                     self.user_data.doctor = ['DOCTOR', self.assigned_doctor]
 
                     if "John Doe" in self.ai_states['completed']:
-                        print(' '.join(self.user_data.doctor[1][1:]).title())
-                        self.ai_states['completed'] = self.ai_states['completed'].replace("John Doe",
-                                                                                          ' '.join(
-                                                                                              self.user_data.doctor[
-                                                                                                  1][
-                                                                                              1:]).title())
+                        doctor_name = ' '.join(self.assigned_doctor[1:]).title()
+                        print(doctor_name)
+                        self.ai_states['completed'] = self.ai_states['completed'].replace("John Doe", doctor_name)
 
-                    self.create_service_message(f"{(self.ai_states['completed'])}")
+                    self.create_service_message(self.ai_states['completed'])
                     self.disable_chat()
 
                     logging.info(f"Sending USER: {self.user_data.user}'s appointment booking for processing.")
@@ -287,44 +300,45 @@ class aiChat(Chat):
                     if received_update:
                         logging.info(f'Received notification: {received_update}')
 
-            self.create_service_message(f"{self.ai_states['confused']}")
+            self.create_service_message(self.ai_states['confused'])
         # return
 
         if self.current_state == 'greeting':
             self.user_data.symptoms = message
             self.current_state = 'images'
 
-        self.create_client_message(message, 'white', ' '.join(self.user_data.user[1][1:]).title())
+        self.create_client_message(message, '#f2f2f2', [self.username, 'Patient'], 'origin')
 
         if self.current_state == 'images' and self.upload_frame is not None:
             logging.info("User has already received an offer to upload symptoms.")
 
             uploaded_images = self.upload_frame.get_children()
             if not uploaded_images:
-                self.create_service_message(f"{self.ai_states['no-images']}")
+                self.create_service_message(self.ai_states['no-images'])
 
             else:
-                self.create_service_message(f"{self.ai_states['yes-images']}")
+                self.create_service_message(self.ai_states['yes-images'])
 
             self.current_state = 'prompt'
-            self.create_service_message(f"{self.ai_states[self.current_state]}")
+            self.create_service_message(self.ai_states[self.current_state])
             self.current_state = 'accepted'
 
         if self.current_state == 'accepted':
             if "yes" in message.lower():
 
-                self.create_service_message(f"{(self.ai_states[self.current_state])}")
-                self.doctor_list = Treeview(self.left_frame, self.client, ['ID', 'First Name', 'Last Name'])
-                self.doctor_list.pack(side='top', pady=10, padx=40, anchor=W)
+                self.create_service_message(self.ai_states[self.current_state])
 
-                done = CTkButton(self.left_frame, text='Done', text_color='white', fg_color='#7b96d4',
+                self.doctor_list = Treeview(self.container, self.client, ['ID', 'First Name', 'Last Name'])
+                self.doctor_list.pack(side='top', pady=5, anchor=W)
+
+                done = CTkButton(self.container, text='Done', text_color='white', fg_color='#7b96d4',
                                  command=self.handle_ai_chat, height=10, width=10)
                 done.pack(side='top', pady=10, padx=10, anchor=W, ipadx=10, ipady=5)
                 self.current_state = 'completed'
 
             elif "no" in message.lower():
                 self.current_state = 'declined'
-                self.create_service_message(f"{(self.ai_states[self.current_state])}")
+                self.create_service_message(self.ai_states[self.current_state])
                 self.disable_chat()
 
                 if self.upload_frame:
@@ -337,7 +351,7 @@ class aiChat(Chat):
 
                     data_dict = self.user_data.to_dict()
 
-                    ClientCommands.set_appointment(
+                    received_update = ClientCommands.set_appointment(
                         self.client,
                         self.user_data.user[0],
                         appt_cdms['create apt'],
@@ -347,12 +361,16 @@ class aiChat(Chat):
                     page_packet = [self.user_data.day, self.user_data.time, self.user_data.symptoms,
                                    self.user_data.images, None]
 
+                    self.callback(page_packet)
+
+                    if received_update:
+                        logging.info(f'Received notification: {received_update}')
+
             else:
                 self.create_service_message(f"{self.ai_states['confused']}")
 
         if self.current_state == 'images' and not self.upload_frame:
             self.create_service_message(f"{self.ai_states[self.current_state]}")
-            self.upload_frame = UploadFrame(self.left_frame)
+            self.upload_frame = UploadFrame(self.container)
             self.upload_frame.cancel.configure(command=self.ignore_upload)
             self.upload_frame.pack(side='top', pady=5, anchor=W)
-            self.create_spacer(self.right_frame, 'e')

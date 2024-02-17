@@ -119,22 +119,28 @@ class ClientCommands:
         client.handle_server_messages(command, role, user_data, False)
 
     @staticmethod
-    def show_frame(cont: str, dict):
-        if dict[cont]:
+    def show_frame(cont: str, my_dict, callback=None):
+        if not my_dict[cont]:
+            logging.warning(f"Frame '{cont}' not found in the dictionary.")
+            return
 
-            try:
-                selected_page = dict[cont]
-                for p in dict.values():
-                    if p:
-                        p.pack_forget()
+        selected_page = my_dict[cont]
+        try:
+            for p in my_dict.values():
+                print(p)
+                if p and p.winfo_exists():
+                    p.pack_forget()
 
-                    selected_page.pack(side="top", fill="both", expand=True)
-                    selected_page.tkraise()
+            if cont == 'notifications':
+                selected_page.update_notifications()
 
-            except Exception as e:
-                print(e)
-                raise
+            selected_page.pack(side="top", fill="both", expand=True)
+            selected_page.tkraise()
+
+        except Exception as e:
+            logging.warning(f"Error displaying {cont}: {e}")
+            raise
 
     @staticmethod
-    def add_page(frame, values, dict, cont: str):
-        dict[cont] = frame(*values)
+    def add_page(frame, values, my_dict, cont: str):
+        my_dict[cont] = frame(*values)

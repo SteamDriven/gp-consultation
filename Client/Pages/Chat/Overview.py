@@ -16,6 +16,8 @@ class ChatOverview(CTkFrame):
 
         self.tabs = None
         self.top_bar = None
+        self.controller = controller
+        self.client = controller.client
         self.container = None
         self.chat_window = None
         self.left_frame = None
@@ -67,24 +69,16 @@ class ChatOverview(CTkFrame):
         self.configure_menu()
         self.create_pages()
 
-        ClientCommands.add_page(Chat, [self.right_frame], self.pages, 'chat room')
+        ClientCommands.add_page(frame=Chat, values=[self.right_frame, self.client], my_dict=self.pages, cont='chat room')
         ClientCommands.show_frame('chat room', self.pages)
+
+    def start(self):
+        print('Starting message listener.')
+        self.pages['chat room'].start_message_listener()
 
     def create_pages(self):
         for page, data in self.pages_list.items():
             self.pages[page] = data(self.right_frame)
-
-    # def show_frame(self, cont: str, frame):
-    #     if cont not in self.pages and frame:
-    #         self.pages[cont] = frame(self.right_frame)
-    #
-    #     selected_page = self.pages[cont]
-    #     for p in self.pages.values():
-    #         if p:
-    #             p.pack_forget()
-    #
-    #         selected_page.pack(side="top", fill="both", expand=True)
-    #         selected_page.tkraise()
 
     def configure_menu(self):
         self.tabs.grid_columnconfigure(0, weight=0)
@@ -141,6 +135,3 @@ class ChatOverview(CTkFrame):
         self.filter_frame.pack(side='top', fill='x')
         self.chats_frame.pack(fill='both', expand=True)
         self.add_btn.pack(side='right', anchor=E, padx=5, pady=5)
-
-        if self.chat_data is not None:
-            self.show_frame('chat', Chat)

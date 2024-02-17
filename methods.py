@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from configs import Commands
 from tkinter import messagebox
 import re
@@ -114,7 +116,10 @@ class PatientData(UserAppointmentData):
 
     @day.setter
     def day(self, newDay):
-        self._selected_day = newDay
+        parsed_date = datetime.strptime(newDay, "%a %d %Y")
+        formatted_date = parsed_date.strftime("%Y-%m-%d")
+
+        self._selected_day = formatted_date
         logging.info(f"Appointment data > DAY: {self._selected_day}")
 
     @doctor.setter

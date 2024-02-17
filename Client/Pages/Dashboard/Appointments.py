@@ -1,5 +1,6 @@
 from customtkinter import *
 from Client.Widgets import Button, Calendar
+from Client.helper import ClientCommands
 
 
 class Appointments(CTkFrame):
@@ -83,8 +84,9 @@ class RequestAppointments(CTkFrame):
 
         print(f"Day: {day_info} at {time}")
         self.user_data.day = ' '.join(day_info)
+        print(self.user_data.day)
         self.user_data.time = time
-        self.control.show_frame("symptoms")
+        ClientCommands.show_frame("symptoms", self.control.frames)
 
     def create(self):
         self.title = CTkLabel(self, text='Request new appointment', text_color='Black',

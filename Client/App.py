@@ -32,6 +32,7 @@ class App(ctk.CTk):
         self.user_data = None
 
         self.pages_list = {
+
             "login": Login,
             "chat": ChatOverview,
         }
@@ -51,7 +52,7 @@ class App(ctk.CTk):
         for key, value in self.pages_list.items():
             self.frames[key] = value(self.container, self)
 
-        ClientCommands.show_frame('chat', self.frames)
+        ClientCommands.show_frame('login', self.frames)
 
     # def show_frame(self, cont: str, frame):
     #
@@ -88,16 +89,20 @@ class App(ctk.CTk):
             self.user_data = PatientData()
             self.user_data.user = info
 
-            try:
-                for f in self.frames.values():
-                    f.pack_forget()
+            ClientCommands.add_page(PatientDashboard, (self.container, self, self.user_data, self.client), self.frames,
+                                    'patient dashboard')
+            ClientCommands.show_frame('patient dashboard', self.frames)
 
-                frame = PatientDashboard(self.container, self, self.user_data, self.client)
-                frame.pack(side="top", fill="both", expand=True)
-                frame.tkraise()
-
-            except Exception as e:
-                print(f"Error in show_frame: {e}")
+            # try:
+            #     for f in self.frames.values():
+            #         f.pack_forget()
+            #
+            #     frame = PatientDashboard(self.container, self, self.user_data, self.client)
+            #     frame.pack(side="top", fill="both", expand=True)
+            #     frame.tkraise()
+            #
+            # except Exception as e:
+            #     print(f"Error in show_frame: {e}")
 
         elif command == Commands.packet_commands['page commands']['change d']:
             ClientCommands.handle_successful_login(UserTypes.CLINICIAN)
@@ -106,16 +111,20 @@ class App(ctk.CTk):
             self.user_data = DoctorData()
             self.user_data.user = info
 
-            try:
-                for f in self.frames.values():
-                    f.pack_forget()
+            ClientCommands.add_page(DoctorDashboard, (self.container, self, self.user_data, self.client),
+                                    self.frames, 'doctor dashboard')
+            ClientCommands.show_frame('doctor dashboard', self.frames)
 
-                frame = DoctorDashboard(self.container, self, self.user_data, self.client)
-                frame.pack(side="top", fill="both", expand=True)
-                frame.tkraise()
-
-            except Exception as e:
-                print(f"Error in show_frame: {e}")
+            # try:
+            #     for f in self.frames.values():
+            #         f.pack_forget()
+            #
+            #     frame = DoctorDashboard(self.container, self, self.user_data, self.client, self)
+            #     frame.pack(side="top", fill="both", expand=True)
+            #     frame.tkraise()
+            #
+            # except Exception as e:
+            #     print(f"Error in show_frame: {e}")
 
         elif command == Commands.packet_commands['page commands']['warning']:
             ClientCommands.handle_failed_login()
@@ -139,6 +148,9 @@ class App(ctk.CTk):
             print("Patient Data:", patient_data)
 
             ClientCommands.register(self.client, UserTypes.PATIENT, patient_data)
+
+    def get_pages(self):
+        return self.pages_list
 
 
 app_client = Client('localhost', client_port)
