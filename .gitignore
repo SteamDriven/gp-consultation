@@ -216,7 +216,7 @@ fabric.properties
 
 
 # General
-*.DS_Store
+**.DS_Store
 .AppleDouble
 .LSOverride
 
