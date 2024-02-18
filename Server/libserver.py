@@ -146,9 +146,9 @@ class Server:
 
         return random.choice(available)
 
-    def get_connected_user(self, user):
+    def get_connected_user(self, client):
         for key, user in self.connected_users.items():
-            if user == user:
+            if user == client:
                 return key
 
     def handle_messages_from_client(self, client):
@@ -370,6 +370,7 @@ class Server:
 
                         if message['COMMAND'] == Commands.chat_commands['broadcast']:
                             current_user = self.get_connected_user(client)
+                            print(current_user)
                             message_data = message['DATA']
 
                             logging.info(f"Received message: {message_data} from user: {current_user}")
@@ -401,7 +402,7 @@ class Server:
                                     self.message['DATA'] = [role, name, message_data]
 
                                     self.connected_users[recipient[0]].send(json.dumps(self.message).encode())
-                                    break
+                                    current_user = None
 
                                 else:
                                     logging.info(f"User {current_user} was not found in any active session")
