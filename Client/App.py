@@ -34,7 +34,6 @@ class App(ctk.CTk):
         self.pages_list = {
 
             "login": Login,
-            "chat": ChatOverview,
         }
 
         # self.create_random_doctor(1)
@@ -54,21 +53,7 @@ class App(ctk.CTk):
 
         ClientCommands.show_frame('login', self.frames)
 
-    # def show_frame(self, cont: str, frame):
-    #
-    #     if cont not in self.frames and frame:
-    #         self.frames[cont] = frame(self.container)
-    #
-    #     selected_page = self.frames[cont]
-    #     for p in self.frames.values():
-    #         if p:
-    #             p.pack_forget()
-    #
-    #         selected_page.pack(side="top", fill="both", expand=True)
-    #         selected_page.tkraise()
-
         # Initialise
-
         self.mainloop()
 
     def validate_login(self, data):
@@ -78,6 +63,7 @@ class App(ctk.CTk):
 
         logging.info(">: Client has requested to login. Sending login data to server.")
         accepted = self.client_commands.login(self.client, data)
+
         print(f"{accepted} is the received login data.")
         command = accepted[0]
         info = accepted[1]
@@ -93,17 +79,6 @@ class App(ctk.CTk):
                                     'patient dashboard')
             ClientCommands.show_frame('patient dashboard', self.frames)
 
-            # try:
-            #     for f in self.frames.values():
-            #         f.pack_forget()
-            #
-            #     frame = PatientDashboard(self.container, self, self.user_data, self.client)
-            #     frame.pack(side="top", fill="both", expand=True)
-            #     frame.tkraise()
-            #
-            # except Exception as e:
-            #     print(f"Error in show_frame: {e}")
-
         elif command == Commands.packet_commands['page commands']['change d']:
             ClientCommands.handle_successful_login(UserTypes.CLINICIAN)
             logging.info(f"Received login data: {info}")
@@ -115,19 +90,10 @@ class App(ctk.CTk):
                                     self.frames, 'doctor dashboard')
             ClientCommands.show_frame('doctor dashboard', self.frames)
 
-            # try:
-            #     for f in self.frames.values():
-            #         f.pack_forget()
-            #
-            #     frame = DoctorDashboard(self.container, self, self.user_data, self.client, self)
-            #     frame.pack(side="top", fill="both", expand=True)
-            #     frame.tkraise()
-            #
-            # except Exception as e:
-            #     print(f"Error in show_frame: {e}")
-
         elif command == Commands.packet_commands['page commands']['warning']:
             ClientCommands.handle_failed_login()
+
+        ClientCommands.add_page(ChatOverview, (self.container, self, self.user_data), self.frames, 'chat')
 
     def create_random_doctor(self, amt):
         print('Generating fake data')

@@ -75,22 +75,6 @@ class Chat(CTkFrame):
         self.create_widgets()
         self.setup()
 
-        # self.start_message_listener()
-        # self.create_service_message(self.example_message_server)
-        # self.create_client_message(self.example_message_patient, '#f2f2f2', ['Adriel McBean', 'Patient'],
-        #                            'sender')
-        # self.create_client_message(self.example_message_doctor, '#f2f2f2', ['Dr John Doe', 'Doctor'],
-        #                            'receiver')
-
-    # def create_session(self, booking_reference, clinician, patient):
-    #     if booking_reference not in self.session:
-    #
-    #         self.session[booking_reference] = {
-    #             'doctor': clinician,
-    #             'patient': patient,
-    #             'messages': {}
-    #         }
-
     def listen_for_messages(self):
         logging.info(f"Listening for messages.")
         while True:
@@ -131,15 +115,22 @@ class Chat(CTkFrame):
         return message
 
     def send_message(self):
-        message = self.get_message()
+        user_message = self.get_message()
+        logging.info(f'Sending message: {user_message}')
 
-        message = ClientCommands.handle_chat(self.client, message, Commands.chat_commands['broadcast'])
-        role, name, user_message = message[0], message[1], message[2]
+        ClientCommands.handle_chat(self.client, user_message, Commands.chat_commands['broadcast'])
 
-        if message:
-            print(message)
+        logging.info('Message sent, displaying origin message')
 
-            self.create_client_message(user_message, '#f2f2f2', [name, role], 'origin')
+        current_user = self.user_data.user
+        name = ' '.join(current_user[1][1:]).title()
+
+        if current_user[0] == 'CLINICIAN':
+            role = 'Doctor'
+        else:
+            role = 'Patient'
+
+        self.create_client_message(user_message, '#f2f2f2', [name, role], 'origin')
 
     def create_spacer(self, parent, anchor):
         spacer = CTkFrame(parent, fg_color=self.DEFAULT_CHAT_BG, corner_radius=0)

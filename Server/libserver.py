@@ -36,15 +36,29 @@ class Server:
         self.client_address = None
         self.message = {"COMMAND": "", "CLIENT": None, "DATA": None}
         self.connected_users = {}
-        self.active_sessions = {}
         self.query = ""
         self.query_data = []
         self.sent_notifications = set()
+
+        self.active_sessions = self.load_active_sessions()
 
         self.database = Database('Olinic Management.db')
         self.setup_server()
 
         # schedule.every(10).seconds.do(self.check_upcoming_bookings)
+
+    def save_active_sessions(self):
+        with open('active_sessions.json', 'w') as file:
+            json.dump(self.active_sessions, file)
+
+    @staticmethod
+    def load_active_sessions():
+        try:
+            with open('active_sessions.json', 'r') as file:
+                return json.load(file)
+
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
 
     def check_upcoming_bookings(self):
         print('checking upcoming bookings')
@@ -102,6 +116,9 @@ class Server:
                     'clinician': [clinician_id, clinician_name],
                     'patient': [patient_id, patient_name],
                 }
+
+                self.save_active_sessions()
+                logging.info(f"Successfully saved active booking into dict: {self.active_sessions}")
 
                 clinician_notification = {
                     'identifier': self.database.generate_code(5),
@@ -305,7 +322,8 @@ class Server:
                                 patient_message = (f"You have scheduled a request for an appointment with Dr "
                                                    f"{doctor_name} {doctor_id}. "
                                                    f"The appointment is set for {date_of_appt} at {time_of_appt}.\n"
-                                                   f"You will receive a confirmation upon acceptance of your appointment.")
+                                                   f"You will receive a confirmation upon acceptance of your "
+                                                   f"appointment.")
 
                                 status = 'Pending'
                                 current_timestamp = ServerCommands.format_time()
@@ -352,61 +370,41 @@ class Server:
 
                         if message['COMMAND'] == Commands.chat_commands['broadcast']:
                             current_user = self.get_connected_user(client)
-                            message = message['DATA']
+                            message_data = message['DATA']
 
-                            for booking_ref, roles in self.active_sessions:
+                            logging.info(f"Received message: {message_data} from user: {current_user}")
+                            print(self.active_sessions)
+
+                            for booking_ref, roles in self.active_sessions.items():
                                 clinician_id, clinician_name = roles.get('clinician', [None, None])
                                 patient_id, patient_name = roles.get('patient', [None, None])
 
-                                recipient = None
+                                print(clinician_id, clinician_name, patient_id, patient_name)
 
                                 if current_user in [clinician_id, patient_id]:
+                                    logging.info(f'Checking what role user: {current_user} is.')
+
                                     if current_user == clinician_id:
                                         role = 'Doctor'
                                         name = clinician_name
                                         recipient = [patient_id, patient_name]
+                                        logging.info(f'Clinician: {current_user} is sending to patient: {recipient}')
 
                                     else:
                                         role = 'Patient'
                                         name = patient_name
                                         recipient = [clinician_id, clinician_name]
-
-                                    logging.info(f"User {current_user} was found in active session as {role} for booking "
-                                                 f"{booking_ref}")
-
-                                    self.message['COMMAND'] = Commands.chat_commands['broadcast']
-                                    self.message['CLIENT'] = current_user
-                                    self.message['DATA'] = [role, name, message]
-
-                                    client.send(json.dumps(self.message).encode())
+                                        logging.info(f'Patient: {current_user} is sending to clinician: {recipient}')
 
                                     self.message['COMMAND'] = Commands.chat_commands['receive']
-                                    self.message['CLIENT'] = recipient
-                                    self.message['DATA'] = [role, name, message]
+                                    self.message['CLIENT'] = recipient[0]
+                                    self.message['DATA'] = [role, name, message_data]
 
-                                    self.connected_users[recipient].send(json.dumps(self.message).encode())
+                                    self.connected_users[recipient[0]].send(json.dumps(self.message).encode())
                                     break
 
                                 else:
                                     logging.info(f"User {current_user} was not found in any active session")
-
-
-
-                            # for key, user_socket in self.connected_users.items():
-                            #     if user_socket == self.connected_users[message['CLIENT']]:
-                            #         logging.debug(f"Skipping USER {key} cause it's matches Sender id.")
-                            #         continue
-                            #
-                            #     if key == self.connected_users[message['DATA'][0]]:
-                            #         logging.debug(f"Sending a message to USER: {key}")
-                            #         name = self.database.check_records(message)
-                            #         self.message['COMMAND'] = Commands.chat_commands['receive']
-                            #         self.message['CLIENT'] = [message['CLIENT'], name]
-                            #         self.message['DATA'] = message['DATA'][1]
-                            #
-                            #         user_socket.send(json.dumps(self.message).encode())
-                            #
-                            #         self.message = {'COMMAND': "", 'CLIENT': [], 'DATA': []}
 
                         if message['COMMAND'] == Commands.packet_commands['register']:
                             logging.info(">: Client requested to be registered to the database.")
@@ -415,16 +413,6 @@ class Server:
                                 self.message["COMMAND"] = Commands.packet_commands['complete']
 
                                 client.send(json.dumps(self.message).encode())
-
-                        # if message['COMMAND'] == Commands.packet_commands['referral']:
-                        #     logging.info(">: Client requested a referral code from server.")
-                        #     code = ServerCommands.generate_code(6)
-                        #
-                        #     self.message["COMMAND"] = Commands.packet_commands['referral']
-                        #     self.message["CLIENT"] = UserTypes.CLINICIAN
-                        #     self.message["DATA"].append(code)
-                        #
-                        #     client.send(json.dumps(self.message).encode())
 
                         if message['COMMAND'] == Commands.packet_commands['validate register']:
                             found_results = self.database.check_records(message)

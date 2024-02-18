@@ -9,7 +9,7 @@ from Client.helper import ClientCommands
 
 
 class ChatOverview(CTkFrame):
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, user_data):
         CTkFrame.__init__(self, parent)
 
         self.configure(fg_color='white')
@@ -17,6 +17,7 @@ class ChatOverview(CTkFrame):
         self.tabs = None
         self.top_bar = None
         self.controller = controller
+        self.user_data = user_data
         self.client = controller.client
         self.container = None
         self.chat_window = None
@@ -69,7 +70,9 @@ class ChatOverview(CTkFrame):
         self.configure_menu()
         self.create_pages()
 
-        ClientCommands.add_page(frame=Chat, values=[self.right_frame, self.client], my_dict=self.pages, cont='chat room')
+        params = (self.right_frame, self.client, 'Consultation', self.user_data)
+
+        ClientCommands.add_page(frame=Chat, values=params, my_dict=self.pages, cont='chat room')
         ClientCommands.show_frame('chat room', self.pages)
 
     def start(self):

@@ -180,10 +180,8 @@ class DoctorDashboard(Dashboard):
 
         self.pages_list = {
 
-            # "chat room": ChatBoard,
             'appointments': Appointments,
             'notifications': Notifications,
-            # 'confirm apt': SelectTime,
         }
 
         self.buttons = {
@@ -220,40 +218,6 @@ class DoctorDashboard(Dashboard):
         for key, value in self.pages_list.items():
             self.frames[key] = value(self.main_frame, self, self.user_data)
 
-        # self.add_page('apt details', AppointmentDetails, (self.main_frame, self))
-        # self.controller.frames['test chat'] = Chat2(self.controller.container)
-        # self.controller.show_frame('test chat')
-
-    # def show_frame(self, cont: str):
-    #     frame = self.frames[cont]
-    #     print('Displaying frame:', cont)
-    #
-    #     try:
-    #         if frame is not None:
-    #             for f in self.frames.values():
-    #                 f.pack_forget()
-    #
-    #             # if cont == 'chat room':
-    #             #     for f in self.controller.frames.values():
-    #             #         f.pack_forget()
-    #             #
-    #             #         frame = ChatBoard(self.controller.container, self, self.user_data, self.client)
-    #             #     # frame.create()
-    #             #     # frame.place()
-    #
-    #             if cont == 'notifications':
-    #                 frame.update_notifications()
-    #
-    #             frame.pack(side="top", fill="both", expand=True)
-    #             frame.tkraise()
-    #
-    #         else:
-    #             raise ValueError(f"Frame '{cont}' does not exist.")
-    #
-    #     except Exception as e:
-    #         print(f"Error in show_frame: {e}")
-    #         raise e
-
     def configure_menu(self):
         self.buttons_frame.grid_columnconfigure(0, weight=0)
         self.buttons_frame.grid_rowconfigure((0, 1, 2, 3, 4), weight=0)
@@ -272,3 +236,4 @@ class DoctorDashboard(Dashboard):
 
     def open_chat(self):
         ClientCommands.show_frame('chat', self.controller.frames)
+        self.controller.frames['chat'].start()
