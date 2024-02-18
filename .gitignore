@@ -216,9 +216,12 @@ fabric.properties
 
 
 # General
-.DS_Store
+*.DS_Store
 .AppleDouble
 .LSOverride
+
+# Export to Html
+exportToHTML
 
 # Icon must end with two \r
 Icon
